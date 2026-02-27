@@ -10,7 +10,8 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "slow-test": "lsof -ti :5174 | xargs kill -9 2>/dev/null; npx vite --config vite.renderer.config.ts --port 5174 --strictPort & VITE_PID=$!; sleep 2 && dotnet test tests/playwright/MacPaintTool.Tests; TEST_EXIT=$?; kill $VITE_PID 2>/dev/null; exit $TEST_EXIT"
   },
   "keywords": [],
   "author": {
