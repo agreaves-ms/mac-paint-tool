@@ -15,6 +15,10 @@
   * Research recommends: 4 phases (MVP, Expected, Powerful, Advanced)
   * Plan implements: 8 phases split across 6 plans; Plan 01 covers the first 1.5 of the 8 phases (Scaffold + PaintEngine/Tool interface from Core Engine)
   * Rationale: Finer-grained phases improve implementability — scaffold must complete before engine code
+* DD-02: TypeScript upgraded from scaffold default ~4.5.4 to ~5.7.0
+  * Plan specifies: Use scaffold defaults from `npm init electron-app@latest`
+  * Implementation differs: Upgraded TypeScript due to incompatibility with current @types/node
+  * Rationale: Scaffold's TS 4.5.4 produced hundreds of type errors against modern @types/node definitions
 
 ## Implementation Paths Considered
 

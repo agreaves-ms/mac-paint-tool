@@ -17,4 +17,5 @@ export enum ToolType {
   Selection = 'selection',
   Shape = 'shape',
   Text = 'text',
+  Eyedropper = 'eyedropper',
 }
