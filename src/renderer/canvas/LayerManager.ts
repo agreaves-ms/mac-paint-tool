@@ -5,6 +5,7 @@ export interface Layer {
   ctx: CanvasRenderingContext2D;
   visible: boolean;
   opacity: number;
+  blendMode: GlobalCompositeOperation;
 }
 
 export class LayerManager {
@@ -69,6 +70,7 @@ export class LayerManager {
       ctx,
       visible: true,
       opacity: 1.0,
+      blendMode: 'source-over',
     };
 
     this.layers.push(layer);
@@ -164,6 +166,14 @@ export class LayerManager {
     }
   }
 
+  setBlendMode(id: string, mode: GlobalCompositeOperation): void {
+    const layer = this.layers.find((l) => l.id === id);
+    if (layer) {
+      layer.blendMode = mode;
+      this.onChangeCallback?.();
+    }
+  }
+
   renameLayer(id: string, name: string): void {
     const layer = this.layers.find((l) => l.id === id);
     if (layer) {
@@ -183,9 +193,11 @@ export class LayerManager {
     for (const layer of this.layers) {
       if (!layer.visible) continue;
       tempCtx.globalAlpha = layer.opacity;
+      tempCtx.globalCompositeOperation = layer.blendMode;
       tempCtx.drawImage(layer.canvas, 0, 0);
     }
     tempCtx.globalAlpha = 1;
+    tempCtx.globalCompositeOperation = 'source-over';
 
     // Remove all layers except the first
     while (this.layers.length > 1) {
@@ -201,6 +213,7 @@ export class LayerManager {
     base.name = 'Background';
     base.visible = true;
     base.opacity = 1;
+    base.blendMode = 'source-over';
     base.canvas.style.display = '';
     base.canvas.style.opacity = '1';
     this.activeLayerId = base.id;
@@ -215,8 +228,10 @@ export class LayerManager {
     const belowLayer = this.layers[activeIndex - 1];
 
     belowLayer.ctx.globalAlpha = activeLayer.opacity;
+    belowLayer.ctx.globalCompositeOperation = activeLayer.blendMode;
     belowLayer.ctx.drawImage(activeLayer.canvas, 0, 0);
     belowLayer.ctx.globalAlpha = 1;
+    belowLayer.ctx.globalCompositeOperation = 'source-over';
 
     activeLayer.canvas.remove();
     this.layers.splice(activeIndex, 1);
@@ -234,9 +249,11 @@ export class LayerManager {
     for (const layer of this.layers) {
       if (!layer.visible) continue;
       ctx.globalAlpha = layer.opacity;
+      ctx.globalCompositeOperation = layer.blendMode;
       ctx.drawImage(layer.canvas, 0, 0);
     }
     ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
     return temp;
   }
 

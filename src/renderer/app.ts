@@ -106,6 +106,15 @@ const propertyPanel = new PropertyPanel(document.getElementById('property-panel'
   onHardnessChange: (hardness) => {
     brushTool.hardness = hardness;
   },
+  onSymmetryEnabledChange: (enabled) => {
+    brushTool.symmetryEnabled = enabled;
+  },
+  onSymmetryAxisCountChange: (count) => {
+    brushTool.symmetryAxisCount = count;
+  },
+  onSymmetryAxisTypeChange: (type) => {
+    brushTool.symmetryAxisType = type as 'mirror-h' | 'mirror-v' | 'rotational';
+  },
 });
 
 // ColorSelection tool wrapper

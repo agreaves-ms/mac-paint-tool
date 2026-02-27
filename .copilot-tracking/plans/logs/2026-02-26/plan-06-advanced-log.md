@@ -47,7 +47,31 @@ Gaps and differences identified between research findings and the implementation
 
 ## Suggested Follow-On Work
 
-Items identified during planning that fall outside current scope.
+Items identified during implementation that fall outside current scope.
+
+* WI-01: Wire BrushPresetPanel into app.ts — Requires container element and BrushEngine instance (low)
+  * Source: Phase 7, Step 7.4
+  * Dependency: None
+
+* WI-02: Wire CurvesDialog into app.ts — Requires menu item or keyboard shortcut for invocation (low)
+  * Source: Phase 7, Step 7.5
+  * Dependency: None
+
+* WI-03: Symmetry axis overlay lines — Dashed visual axis lines on canvas when symmetry active (low)
+  * Source: Phase 7, Step 7.6
+  * Dependency: Overlay canvas architecture
+
+* WI-04: Update @typescript-eslint packages — Eliminate version mismatch warning with TypeScript 5.7.x (low)
+  * Source: Phase 8, Step 8.1
+  * Dependency: None
+
+* WI-05: Code signing for macOS distribution — Currently unsigned app bundle (low)
+  * Source: Phase 8, Step 8.1
+  * Dependency: Apple Developer account
+
+* WI-06: Interactive manual testing — Runtime verification of all tools in the running app (medium)
+  * Source: Phase 8, Step 8.3
+  * Dependency: None
 
 * WI-01: Animation/frame timeline
   * Requires: Frame manager, timeline UI, onion skinning, GIF/APNG encoder

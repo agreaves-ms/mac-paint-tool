@@ -87,6 +87,10 @@ export class LayerPanel {
     item.draggable = true;
     item.dataset.index = String(index);
 
+    // Main row: eye, thumbnail, name
+    const mainRow = document.createElement('div');
+    mainRow.className = 'layer-item-row';
+
     // Visibility toggle
     const eyeBtn = document.createElement('button');
     eyeBtn.className = 'layer-eye-btn';
@@ -104,6 +108,7 @@ export class LayerPanel {
     thumb.width = 30;
     thumb.height = 22;
     const thumbCtx = thumb.getContext('2d')!;
+    thumbCtx.globalAlpha = layer.opacity;
     thumbCtx.drawImage(layer.canvas, 0, 0, layer.canvas.width, layer.canvas.height, 0, 0, 30, 22);
 
     // Name
@@ -111,9 +116,58 @@ export class LayerPanel {
     nameEl.className = 'layer-name';
     nameEl.textContent = layer.name;
 
-    item.appendChild(eyeBtn);
-    item.appendChild(thumb);
-    item.appendChild(nameEl);
+    mainRow.appendChild(eyeBtn);
+    mainRow.appendChild(thumb);
+    mainRow.appendChild(nameEl);
+    item.appendChild(mainRow);
+
+    // Controls row: blend mode + opacity
+    const controlsRow = document.createElement('div');
+    controlsRow.className = 'layer-controls-row';
+
+    // Blend mode dropdown
+    const blendSelect = document.createElement('select');
+    blendSelect.className = 'layer-blend-select';
+    const blendModes: { label: string; value: GlobalCompositeOperation }[] = [
+      { label: 'Normal', value: 'source-over' },
+      { label: 'Multiply', value: 'multiply' },
+      { label: 'Screen', value: 'screen' },
+      { label: 'Overlay', value: 'overlay' },
+      { label: 'Darken', value: 'darken' },
+      { label: 'Lighten', value: 'lighten' },
+    ];
+    for (const bm of blendModes) {
+      const opt = document.createElement('option');
+      opt.value = bm.value;
+      opt.textContent = bm.label;
+      if (bm.value === layer.blendMode) opt.selected = true;
+      blendSelect.appendChild(opt);
+    }
+    blendSelect.addEventListener('change', (e) => {
+      e.stopPropagation();
+      this.layerManager.setBlendMode(layer.id, blendSelect.value as GlobalCompositeOperation);
+    });
+    blendSelect.addEventListener('pointerdown', (e) => e.stopPropagation());
+    controlsRow.appendChild(blendSelect);
+
+    // Opacity slider
+    const opacitySlider = document.createElement('input');
+    opacitySlider.type = 'range';
+    opacitySlider.className = 'layer-opacity-slider';
+    opacitySlider.min = '0';
+    opacitySlider.max = '100';
+    opacitySlider.value = String(Math.round(layer.opacity * 100));
+    opacitySlider.title = `Opacity: ${Math.round(layer.opacity * 100)}%`;
+    opacitySlider.addEventListener('input', (e) => {
+      e.stopPropagation();
+      const val = parseInt(opacitySlider.value, 10);
+      opacitySlider.title = `Opacity: ${val}%`;
+      this.layerManager.setLayerOpacity(layer.id, val / 100);
+    });
+    opacitySlider.addEventListener('pointerdown', (e) => e.stopPropagation());
+    controlsRow.appendChild(opacitySlider);
+
+    item.appendChild(controlsRow);
 
     // Click to select
     item.addEventListener('pointerdown', () => {

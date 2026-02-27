@@ -27,6 +27,9 @@ export interface PropertyCallbacks {
   onGradientModeChange?: (mode: GradientMode) => void;
   onOpacityChange?: (opacity: number) => void;
   onHardnessChange?: (hardness: number) => void;
+  onSymmetryEnabledChange?: (enabled: boolean) => void;
+  onSymmetryAxisCountChange?: (count: number) => void;
+  onSymmetryAxisTypeChange?: (type: string) => void;
 }
 
 export class PropertyPanel {
@@ -79,6 +82,12 @@ export class PropertyPanel {
 
   private brushPresetsSection!: HTMLElement;
 
+  // Symmetry controls
+  private symmetrySection!: HTMLElement;
+  private symmetryAxisCountSection!: HTMLElement;
+  private symmetryAxisCountSlider!: HTMLInputElement;
+  private symmetryAxisCountValue!: HTMLSpanElement;
+
   // Current values
   private lineSize = 2;
   private opacity = 100;
@@ -92,6 +101,9 @@ export class PropertyPanel {
   private italic = false;
   private cornerRadius = 10;
   private curveType: 'quadratic' | 'cubic' = 'quadratic';
+  private symmetryEnabled = false;
+  private symmetryAxisCount = 2;
+  private symmetryAxisType: 'mirror-h' | 'mirror-v' | 'rotational' = 'rotational';
 
   constructor(container: HTMLElement, callbacks?: PropertyCallbacks) {
     this.container = container;
@@ -350,6 +362,67 @@ export class PropertyPanel {
     this.gradientModeSection.appendChild(gradientGroup);
     this.container.appendChild(this.gradientModeSection);
 
+    // Symmetry section (brush only)
+    this.symmetrySection = this.createSection('Symmetry');
+
+    const symmetryToggleRow = document.createElement('div');
+    symmetryToggleRow.className = 'prop-mode-group';
+    const symmetryToggleBtn = document.createElement('button');
+    symmetryToggleBtn.className = 'prop-mode-btn';
+    symmetryToggleBtn.textContent = 'Off';
+    symmetryToggleBtn.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      this.symmetryEnabled = !this.symmetryEnabled;
+      symmetryToggleBtn.textContent = this.symmetryEnabled ? 'On' : 'Off';
+      symmetryToggleBtn.classList.toggle('active', this.symmetryEnabled);
+      this.symmetryAxisCountSection.style.display = this.symmetryEnabled && this.symmetryAxisType === 'rotational' ? '' : 'none';
+      this.callbacks.onSymmetryEnabledChange?.(this.symmetryEnabled);
+    });
+    symmetryToggleRow.appendChild(symmetryToggleBtn);
+    this.symmetrySection.appendChild(symmetryToggleRow);
+
+    // Axis type selector
+    const axisTypeRow = document.createElement('div');
+    axisTypeRow.className = 'prop-mode-group';
+    axisTypeRow.style.flexWrap = 'wrap';
+    const axisTypes: { label: string; value: 'mirror-h' | 'mirror-v' | 'rotational' }[] = [
+      { label: 'Mirror H', value: 'mirror-h' },
+      { label: 'Mirror V', value: 'mirror-v' },
+      { label: 'Rotational', value: 'rotational' },
+    ];
+    for (const at of axisTypes) {
+      const btn = document.createElement('button');
+      btn.className = 'prop-mode-btn';
+      btn.textContent = at.label;
+      if (at.value === this.symmetryAxisType) btn.classList.add('active');
+      btn.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        this.symmetryAxisType = at.value;
+        axisTypeRow.querySelectorAll('.prop-mode-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.symmetryAxisCountSection.style.display = this.symmetryEnabled && this.symmetryAxisType === 'rotational' ? '' : 'none';
+        this.callbacks.onSymmetryAxisTypeChange?.(this.symmetryAxisType);
+      });
+      axisTypeRow.appendChild(btn);
+    }
+    this.symmetrySection.appendChild(axisTypeRow);
+
+    // Axis count slider (for rotational)
+    this.symmetryAxisCountSection = this.createSection('Axes');
+    this.symmetryAxisCountSlider = this.createSlider('symmetry-axes', 2, 12, this.symmetryAxisCount);
+    this.symmetryAxisCountValue = this.createValueDisplay(this.symmetryAxisCount);
+    const axisCountRow = this.createSliderRow(this.symmetryAxisCountSlider, this.symmetryAxisCountValue);
+    this.symmetryAxisCountSection.appendChild(axisCountRow);
+    this.symmetryAxisCountSlider.addEventListener('input', () => {
+      this.symmetryAxisCount = parseInt(this.symmetryAxisCountSlider.value, 10);
+      this.symmetryAxisCountValue.textContent = String(this.symmetryAxisCount);
+      this.callbacks.onSymmetryAxisCountChange?.(this.symmetryAxisCount);
+    });
+    this.symmetrySection.appendChild(this.symmetryAxisCountSection);
+    this.symmetryAxisCountSection.style.display = 'none';
+
+    this.container.appendChild(this.symmetrySection);
+
     this.updateVisibility();
   }
 
@@ -407,6 +480,7 @@ export class PropertyPanel {
     this.cornerRadiusSection.style.display = CORNER_RADIUS_TOOLS.includes(this.activeTool) ? '' : 'none';
     this.curveTypeSection.style.display = CURVE_TOOLS.includes(this.activeTool) ? '' : 'none';
     this.gradientModeSection.style.display = GRADIENT_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.symmetrySection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
   }
 
   private updateCursorPreview(): void {

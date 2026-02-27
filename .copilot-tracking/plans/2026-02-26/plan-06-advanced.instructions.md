@@ -34,51 +34,51 @@ Advanced drawing features (blend modes, pressure sensitivity, custom brush engin
 
 ## Implementation Checklist
 
-### [ ] Implementation Phase 7: Advanced Features
+### [x] Implementation Phase 7: Advanced Features
 
 <!-- parallelizable: false -->
 
-* [ ] Step 7.1: Implement blend modes — per-layer globalCompositeOperation (Normal, Multiply, Screen, Overlay, Darken, Lighten)
+* [x] Step 7.1: Implement blend modes — per-layer globalCompositeOperation (Normal, Multiply, Screen, Overlay, Darken, Lighten)
   * Blend mode selector in layer panel, apply during compositing
   * Files: LayerManager.ts (blend mode property), LayerPanel.ts (dropdown)
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 12-40)
-* [ ] Step 7.2: Implement layer opacity — per-layer transparency slider (0–100%)
+* [x] Step 7.2: Implement layer opacity — per-layer transparency slider (0–100%)
   * globalAlpha per layer, opacity slider in layer panel, thumbnail reflects opacity
   * Files: LayerManager.ts (opacity property), LayerPanel.ts (slider)
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 42-66)
-* [ ] Step 7.3: Implement pressure sensitivity — PointerEvent.pressure for stylus/trackpad
+* [x] Step 7.3: Implement pressure sensitivity — PointerEvent.pressure for stylus/trackpad
   * Pressure-to-width mapping, variable-width strokes, mouse unchanged
   * Files: BrushTool.ts, EraserTool.ts
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 68-97)
-* [ ] Step 7.4: Implement custom brush engine — textures, spacing, jitter, presets
+* [x] Step 7.4: Implement custom brush engine — textures, spacing, jitter, presets
   * Stamp brush tip along stroke path, spacing/scatter/rotation controls
   * Files: src/renderer/tools/BrushEngine.ts (new), src/renderer/ui/BrushPresetPanel.ts (new)
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 99-132)
-* [ ] Step 7.5: Implement curves/levels — color correction with histogram
+* [x] Step 7.5: Implement curves/levels — color correction with histogram
   * Levels input/output ranges, 256-entry lookup table, draggable curve UI, histogram display
   * Files: src/renderer/canvas/Adjustments.ts (new), src/renderer/ui/CurvesDialog.ts (new)
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 134-173)
-* [ ] Step 7.6: Implement symmetry drawing — multi-axis mirror mode
+* [x] Step 7.6: Implement symmetry drawing — multi-axis mirror mode
   * 1–12 axes, reflect/rotate stroke points, visual axis overlay, toggle in tool options
   * Files: BrushTool.ts (symmetry mode), PropertyPanel.ts (symmetry controls)
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 175-210)
-* [ ] Step 7.7: Validate Advanced Features — tsc, npm start, test advanced features
+* [x] Step 7.7: Validate Advanced Features — tsc, npm start, test advanced features
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 212-222)
 
-### [ ] Implementation Phase 8: Final Validation
+### [x] Implementation Phase 8: Final Validation
 
 <!-- parallelizable: false -->
 
-* [ ] Step 8.1: Run full project validation — tsc, lint, make
+* [x] Step 8.1: Run full project validation — tsc, lint, make
   * `npx tsc --noEmit`, `npm run lint`, `npm run make`
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 228-237)
-* [ ] Step 8.2: Fix minor validation issues
+* [x] Step 8.2: Fix minor validation issues
   * Iterate on TypeScript errors, build warnings, runtime issues
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 239-241)
-* [ ] Step 8.3: End-to-end functional testing (comprehensive)
+* [x] Step 8.3: End-to-end functional testing (comprehensive)
   * Complete workflow, all tools at min/mid/max, tolerance and gradiance ranges, 50+ undo, layers, file I/O
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 243-269)
-* [ ] Step 8.4: Report blocking issues
+* [x] Step 8.4: Report blocking issues
   * Document issues, provide next steps, recommend research over inline fixes
   * Details: .copilot-tracking/details/2026-02-26/plan-06-advanced-details.md (Lines 271-278)
 
