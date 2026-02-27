@@ -88,6 +88,12 @@ export class PropertyPanel {
   private symmetryAxisCountSlider!: HTMLInputElement;
   private symmetryAxisCountValue!: HTMLSpanElement;
 
+  // Export quality controls
+  private exportQualitySection!: HTMLElement;
+  private exportQualitySlider!: HTMLInputElement;
+  private exportQualityValue!: HTMLSpanElement;
+  private exportQualityCallback: ((quality: number) => void) | null = null;
+
   // Current values
   private lineSize = 2;
   private opacity = 100;
@@ -423,6 +429,20 @@ export class PropertyPanel {
 
     this.container.appendChild(this.symmetrySection);
 
+    // Export quality section
+    this.exportQualitySection = this.createSection('Export Quality');
+    this.exportQualitySlider = this.createSlider('export-quality', 10, 100, 92);
+    this.exportQualityValue = this.createValueDisplay(92);
+    this.exportQualityValue.textContent = '92%';
+    const exportQualityRow = this.createSliderRow(this.exportQualitySlider, this.exportQualityValue);
+    this.exportQualitySection.appendChild(exportQualityRow);
+    this.exportQualitySlider.addEventListener('input', () => {
+      const val = parseInt(this.exportQualitySlider.value, 10);
+      this.exportQualityValue.textContent = `${val}%`;
+      this.exportQualityCallback?.(val);
+    });
+    this.container.appendChild(this.exportQualitySection);
+
     this.updateVisibility();
   }
 
@@ -547,5 +567,9 @@ export class PropertyPanel {
     this.hardnessSlider.value = String(value);
     this.hardnessValue.textContent = `${value}%`;
     this.callbacks.onHardnessChange?.(value);
+  }
+
+  onExportQualityChange(cb: (quality: number) => void): void {
+    this.exportQualityCallback = cb;
   }
 }

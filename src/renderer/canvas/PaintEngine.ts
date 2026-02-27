@@ -28,8 +28,15 @@ export class PaintEngine {
   private gridEnabled = false;
   private static readonly GRID_MIN_ZOOM = 8;
 
+  // Symmetry overlay
+  private symmetryCanvas: HTMLCanvasElement | null = null;
+  private symmetryCtx: CanvasRenderingContext2D | null = null;
+
   // Zoom change callback
   private onZoomChangeCallback: ((zoom: number) => void) | null = null;
+
+  // Canvas size change callback
+  private onCanvasSizeChangeCallback: ((w: number, h: number) => void) | null = null;
 
   // Selection and eyedropper references
   private selectionTool: SelectionTool | null = null;
@@ -37,6 +44,9 @@ export class PaintEngine {
 
   // Dirty tracking
   private dirty = false;
+
+  // Export quality for JPEG/WebP (0.1–1.0)
+  private _exportQuality = 0.92;
 
   // Selection state (proxied from SelectionTool for clipboard access)
   selectionRect: SelectionRect | null = null;
@@ -182,6 +192,10 @@ export class PaintEngine {
     this.onZoomChangeCallback = callback;
   }
 
+  onCanvasSizeChange(cb: (w: number, h: number) => void): void {
+    this.onCanvasSizeChangeCallback = cb;
+  }
+
   // Grid overlay
 
   initGrid(container: HTMLElement): void {
@@ -249,6 +263,70 @@ export class PaintEngine {
     this.gridCtx.stroke();
   }
 
+  // Symmetry overlay
+
+  drawSymmetryOverlay(enabled: boolean, type: string, axisCount: number): void {
+    if (!enabled) {
+      if (this.symmetryCtx && this.symmetryCanvas) {
+        this.symmetryCtx.clearRect(0, 0, this.symmetryCanvas.width, this.symmetryCanvas.height);
+      }
+      return;
+    }
+
+    // Create symmetry canvas lazily, appending to the same container as grid
+    if (!this.symmetryCanvas) {
+      const container = this.gridCanvas?.parentElement ?? this.canvas.parentElement;
+      if (!container) return;
+      this.symmetryCanvas = document.createElement('canvas');
+      this.symmetryCanvas.className = 'symmetry-overlay';
+      this.symmetryCanvas.style.imageRendering = 'pixelated';
+      container.appendChild(this.symmetryCanvas);
+      this.symmetryCtx = this.symmetryCanvas.getContext('2d')!;
+    }
+
+    const container = this.symmetryCanvas.parentElement;
+    if (!container || !this.symmetryCtx) return;
+
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+
+    if (this.symmetryCanvas.width !== cw || this.symmetryCanvas.height !== ch) {
+      this.symmetryCanvas.width = cw;
+      this.symmetryCanvas.height = ch;
+    }
+
+    this.symmetryCtx.clearRect(0, 0, cw, ch);
+
+    // Canvas center in screen coordinates
+    const cx = this.panX + (this.canvas.width * this.zoomLevel) / 2;
+    const cy = this.panY + (this.canvas.height * this.zoomLevel) / 2;
+    const halfW = (this.canvas.width * this.zoomLevel) / 2;
+    const halfH = (this.canvas.height * this.zoomLevel) / 2;
+    const maxRadius = Math.sqrt(halfW * halfW + halfH * halfH);
+
+    this.symmetryCtx.strokeStyle = 'rgba(0, 120, 255, 0.6)';
+    this.symmetryCtx.lineWidth = 1;
+    this.symmetryCtx.setLineDash([6, 4]);
+    this.symmetryCtx.beginPath();
+
+    if (type === 'mirror-h') {
+      this.symmetryCtx.moveTo(cx, this.panY);
+      this.symmetryCtx.lineTo(cx, this.panY + this.canvas.height * this.zoomLevel);
+    } else if (type === 'mirror-v') {
+      this.symmetryCtx.moveTo(this.panX, cy);
+      this.symmetryCtx.lineTo(this.panX + this.canvas.width * this.zoomLevel, cy);
+    } else if (type === 'rotational') {
+      for (let k = 0; k < axisCount; k++) {
+        const angle = (2 * Math.PI * k) / axisCount;
+        this.symmetryCtx.moveTo(cx, cy);
+        this.symmetryCtx.lineTo(cx + Math.cos(angle) * maxRadius, cy + Math.sin(angle) * maxRadius);
+      }
+    }
+
+    this.symmetryCtx.stroke();
+    this.symmetryCtx.setLineDash([]);
+  }
+
   // Active tool
 
   setActiveTool(tool: Tool): void {
@@ -281,11 +359,11 @@ export class PaintEngine {
     switch (ext) {
       case 'jpg': case 'jpeg':
         mimeType = 'image/jpeg';
-        quality = 0.92;
+        quality = this._exportQuality;
         break;
       case 'webp':
         mimeType = 'image/webp';
-        quality = 0.92;
+        quality = this._exportQuality;
         break;
     }
 
@@ -371,6 +449,14 @@ export class PaintEngine {
     this.dirty = false;
   }
 
+  get exportQuality(): number {
+    return this._exportQuality;
+  }
+
+  set exportQuality(q: number) {
+    this._exportQuality = Math.max(0.1, Math.min(1.0, q));
+  }
+
   // Canvas resize and crop
 
   resizeCanvas(width: number, height: number, anchor: string, bgColor: string): void {
@@ -421,6 +507,7 @@ export class PaintEngine {
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })!;
     this.ctx.putImageData(imageData, 0, 0);
 
+    this.onCanvasSizeChangeCallback?.(rect.width, rect.height);
     this.clearSelection();
   }
 
@@ -450,6 +537,7 @@ export class PaintEngine {
       img.onload = () => {
         this.getContext().drawImage(img, 0, 0);
         URL.revokeObjectURL(url);
+        this.onCanvasSizeChangeCallback?.(this.canvas.width, this.canvas.height);
       };
       img.src = url;
     });

@@ -114,13 +114,20 @@ const propertyPanel = new PropertyPanel(document.getElementById('property-panel'
   },
   onSymmetryEnabledChange: (enabled) => {
     brushTool.symmetryEnabled = enabled;
+    engine.drawSymmetryOverlay(enabled, brushTool.symmetryAxisType, brushTool.symmetryAxisCount);
   },
   onSymmetryAxisCountChange: (count) => {
     brushTool.symmetryAxisCount = count;
+    engine.drawSymmetryOverlay(brushTool.symmetryEnabled, brushTool.symmetryAxisType, count);
   },
   onSymmetryAxisTypeChange: (type) => {
     brushTool.symmetryAxisType = type as 'mirror-h' | 'mirror-v' | 'rotational';
+    engine.drawSymmetryOverlay(brushTool.symmetryEnabled, type, brushTool.symmetryAxisCount);
   },
+});
+
+propertyPanel.onExportQualityChange((q) => {
+  engine.exportQuality = q / 100;
 });
 
 // ColorSelection tool wrapper
@@ -167,6 +174,12 @@ function selectTool(name: string): void {
     engine.setActiveTool(tool);
     propertyPanel.updateForTool(name);
   }
+  // Clear symmetry overlay when switching away from brush
+  if (name !== 'brush') {
+    engine.drawSymmetryOverlay(false, '', 0);
+  } else if (brushTool.symmetryEnabled) {
+    engine.drawSymmetryOverlay(true, brushTool.symmetryAxisType, brushTool.symmetryAxisCount);
+  }
 }
 
 // Wire color changes
@@ -183,6 +196,23 @@ colorPicker.onChange((fg, bg) => {
   const b = parseInt(fg.slice(5, 7), 16);
   fillTool.fillColor = { r, g: g_val, b, a: 255 };
 });
+
+// Eyedropper color preview tooltip
+const eyedropperTooltip = document.createElement('div');
+eyedropperTooltip.className = 'eyedropper-tooltip';
+eyedropperTooltip.style.display = 'none';
+document.body.appendChild(eyedropperTooltip);
+
+eyedropperTool.onColorPreview = (color, x, y) => {
+  if (!color || x < 0) {
+    eyedropperTooltip.style.display = 'none';
+    return;
+  }
+  eyedropperTooltip.style.display = 'flex';
+  eyedropperTooltip.style.left = `${x + 20}px`;
+  eyedropperTooltip.style.top = `${y + 20}px`;
+  eyedropperTooltip.innerHTML = `<span class="eyedropper-swatch" style="background:${color}"></span><span>${color}</span>`;
+};
 
 // Wire eyedropper callback
 eyedropperTool.onColorSampled = (color: string) => {
@@ -319,6 +349,12 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   }
 
   // Transform shortcuts
+  if (isMeta && e.shiftKey && e.key === 'k') {
+    e.preventDefault();
+    undoManager.saveState(engine.getContext(), engine.getLayerManager()?.getActiveLayerId());
+    engine.cropToSelection();
+    return;
+  }
   if (isMeta && e.shiftKey && e.key === 'h') {
     e.preventDefault();
     const ctx = engine.getContext();
@@ -384,6 +420,10 @@ engine.onZoomChange((zoom) => {
 
 zoomLevelEl.textContent = `${Math.round(engine.getZoomLevel() * 100)}%`;
 canvasSizeEl.textContent = `${canvas.width} × ${canvas.height}`;
+
+engine.onCanvasSizeChange((w, h) => {
+  canvasSizeEl.textContent = `${w} × ${h}`;
+});
 
 // Dark mode toggle
 const statusBar = document.getElementById('status-bar')!;

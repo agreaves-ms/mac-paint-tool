@@ -169,6 +169,15 @@ html, body {
   z-index: 10000;
 }
 
+/* Symmetry overlay */
+.symmetry-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 10001;
+}
+
 /* Color Picker */
 .color-picker {
   position: relative;
@@ -428,4 +437,29 @@ html, body {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+}
+
+/* Eyedropper color preview tooltip */
+.eyedropper-tooltip {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  color: var(--text-primary);
+}
+
+.eyedropper-swatch {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #666;
+  border-radius: 2px;
 }
