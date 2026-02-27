@@ -60,6 +60,26 @@ Items identified during planning that fall outside current scope.
   * Source: Identified during layer system design
   * Dependency: This plan (LayerManager.ts) must complete first
 
+* WI-04: Layer-aware resize/crop — `resizeCanvas()` and `cropToSelection()` should resize all layer canvases (medium)
+  * Source: Phase 1, Step 6.1 implementation
+  * Dependency: LayerManager.ts must exist
+
+* WI-05: Lasso clipboard integration — Freeform selection copy/cut/paste requires common selection interface (medium)
+  * Source: Phase 1, Step 6.2 implementation
+  * Dependency: LassoTool.ts and PaintEngine clipboard methods
+
+* WI-06: Layer opacity slider — Per-layer opacity UI control in LayerPanel (low)
+  * Source: Phase 1, Step 6.1 implementation
+  * Dependency: LayerPanel.ts, LayerManager already supports setLayerOpacity()
+
+* WI-07: Interactive filter dialogs — Brightness/contrast filters need parameter UI (slider dialog) (low)
+  * Source: Phase 1, Step 6.5 implementation
+  * Dependency: Filters.ts
+
+* WI-08: Grid resize observer — Grid overlay should respond to window resizes (low)
+  * Source: Phase 1, Step 6.9 implementation
+  * Dependency: PaintEngine grid overlay
+
 ## User Decisions
 
 No user decisions pending.

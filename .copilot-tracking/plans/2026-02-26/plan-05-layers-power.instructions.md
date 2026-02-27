@@ -46,30 +46,30 @@ Introduce multi-layer architecture and P2 power features including lasso selecti
 
 ## Implementation Checklist
 
-### [ ] Implementation Phase 1: Layers and Power Features
+### [x] Implementation Phase 1: Layers and Power Features
 
 <!-- parallelizable: false -->
 
-* [ ] Step 6.1: Implement layer system — multiple `<canvas>` elements, layer panel UI, add/remove/reorder
+* [x] Step 6.1: Implement layer system — multiple `<canvas>` elements, layer panel UI, add/remove/reorder
   * **ARCHITECTURAL WARNING:** This step changes PaintEngine.ts drawing routing and UndoManager state management. Routes drawing through active layer instead of single canvas. Per-layer or composite snapshots for undo.
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 12-56)
-* [ ] Step 6.2: Implement lasso selection — freeform path-based selection
+* [x] Step 6.2: Implement lasso selection — freeform path-based selection
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 57-81)
-* [ ] Step 6.3: Implement gradient tool — `createLinearGradient()`/`createRadialGradient()`
+* [x] Step 6.3: Implement gradient tool — `createLinearGradient()`/`createRadialGradient()`
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 82-106)
-* [ ] Step 6.4: Implement brush presets — opacity, hardness, preset library
+* [x] Step 6.4: Implement brush presets — opacity, hardness, preset library
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 107-131)
-* [ ] Step 6.5: Implement image filters — blur, sharpen, brightness/contrast, invert via pixel manipulation
+* [x] Step 6.5: Implement image filters — blur, sharpen, brightness/contrast, invert via pixel manipulation
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 132-175)
-* [ ] Step 6.6: Implement transform tools — rotate, flip, scale via canvas transform + `drawImage()`
+* [x] Step 6.6: Implement transform tools — rotate, flip, scale via canvas transform + `drawImage()`
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 176-201)
-* [ ] Step 6.7: Implement transparency support — alpha channel editing, checkerboard background
+* [x] Step 6.7: Implement transparency support — alpha channel editing, checkerboard background
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 202-223)
-* [ ] Step 6.8: Implement dark mode — CSS `prefers-color-scheme` + manual toggle
+* [x] Step 6.8: Implement dark mode — CSS `prefers-color-scheme` + manual toggle
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 224-252)
-* [ ] Step 6.9: Implement grid overlay and status bar — pixel grid at high zoom, cursor position, zoom %, canvas size
+* [x] Step 6.9: Implement grid overlay and status bar — pixel grid at high zoom, cursor position, zoom %, canvas size
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 253-280)
-* [ ] Step 6.10: Validate Phase 6 — tsc, npm start, test layers/filters/transforms/dark mode/grid
+* [x] Step 6.10: Validate Phase 6 — tsc, npm start, test layers/filters/transforms/dark mode/grid
   * Details: .copilot-tracking/details/2026-02-26/plan-05-layers-power-details.md (Lines 281-302)
 
 ## Planning Log

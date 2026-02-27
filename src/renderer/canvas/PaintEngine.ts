@@ -1,6 +1,7 @@
 import type { Tool } from '../tools/Tool';
 import type { SelectionTool, SelectionRect } from '../tools/SelectionTool';
 import type { EyedropperTool } from '../tools/EyedropperTool';
+import type { LayerManager } from './LayerManager';
 
 export class PaintEngine {
   private canvas: HTMLCanvasElement;
@@ -16,6 +17,19 @@ export class PaintEngine {
   private lastPanPointer = { x: 0, y: 0 };
 
   private static readonly ZOOM_STEPS = [0.25, 0.5, 1, 2, 4, 8, 16];
+
+  // Layer management
+  private layerManager: LayerManager | null = null;
+  private layerStack: HTMLElement | null = null;
+
+  // Grid overlay
+  private gridCanvas: HTMLCanvasElement | null = null;
+  private gridCtx: CanvasRenderingContext2D | null = null;
+  private gridEnabled = false;
+  private static readonly GRID_MIN_ZOOM = 8;
+
+  // Zoom change callback
+  private onZoomChangeCallback: ((zoom: number) => void) | null = null;
 
   // Selection and eyedropper references
   private selectionTool: SelectionTool | null = null;
@@ -54,11 +68,11 @@ export class PaintEngine {
     }
     // Alt+click: temporarily sample color with eyedropper
     if (e.altKey && this.eyedropperTool) {
-      this.eyedropperTool.sampleColor(e, this.ctx);
+      this.eyedropperTool.sampleColor(e, this.getContext());
       return;
     }
     if (this.activeTool) {
-      this.activeTool.onPointerDown(e, this.ctx);
+      this.activeTool.onPointerDown(e, this.getContext());
     }
   }
 
@@ -71,7 +85,7 @@ export class PaintEngine {
       return;
     }
     if (this.activeTool) {
-      this.activeTool.onPointerMove(e, this.ctx);
+      this.activeTool.onPointerMove(e, this.getContext());
     }
   }
 
@@ -82,7 +96,7 @@ export class PaintEngine {
       return;
     }
     if (this.activeTool) {
-      this.activeTool.onPointerUp(e, this.ctx);
+      this.activeTool.onPointerUp(e, this.getContext());
     }
   }
 
@@ -117,8 +131,10 @@ export class PaintEngine {
   // Zoom/pan methods
 
   private applyTransform(): void {
-    this.canvas.style.transformOrigin = '0 0';
-    this.canvas.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoomLevel})`;
+    const target = this.layerStack ?? this.canvas;
+    target.style.transformOrigin = '0 0';
+    target.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoomLevel})`;
+    this.renderGrid();
   }
 
   private zoomAtPoint(newZoom: number, clientX: number, clientY: number): void {
@@ -130,11 +146,13 @@ export class PaintEngine {
     this.panX += cx * (oldZoom - this.zoomLevel);
     this.panY += cy * (oldZoom - this.zoomLevel);
     this.applyTransform();
+    this.onZoomChangeCallback?.(this.zoomLevel);
   }
 
   setZoom(level: number): void {
     this.zoomLevel = Math.max(0.25, Math.min(16, level));
     this.applyTransform();
+    this.onZoomChangeCallback?.(this.zoomLevel);
   }
 
   zoomIn(): void {
@@ -155,6 +173,77 @@ export class PaintEngine {
 
   getZoomLevel(): number {
     return this.zoomLevel;
+  }
+
+  onZoomChange(callback: (zoom: number) => void): void {
+    this.onZoomChangeCallback = callback;
+  }
+
+  // Grid overlay
+
+  initGrid(container: HTMLElement): void {
+    this.gridCanvas = document.createElement('canvas');
+    this.gridCanvas.className = 'grid-overlay';
+    this.gridCanvas.style.imageRendering = 'pixelated';
+    container.appendChild(this.gridCanvas);
+    this.gridCtx = this.gridCanvas.getContext('2d')!;
+  }
+
+  toggleGrid(): boolean {
+    this.gridEnabled = !this.gridEnabled;
+    this.renderGrid();
+    return this.gridEnabled;
+  }
+
+  isGridEnabled(): boolean {
+    return this.gridEnabled;
+  }
+
+  private renderGrid(): void {
+    if (!this.gridCanvas || !this.gridCtx) return;
+
+    const container = this.gridCanvas.parentElement;
+    if (!container) return;
+
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+
+    if (this.gridCanvas.width !== cw || this.gridCanvas.height !== ch) {
+      this.gridCanvas.width = cw;
+      this.gridCanvas.height = ch;
+    }
+
+    this.gridCtx.clearRect(0, 0, cw, ch);
+
+    if (!this.gridEnabled || this.zoomLevel < PaintEngine.GRID_MIN_ZOOM) return;
+
+    const pixelSize = this.zoomLevel;
+    const docW = this.canvas.width;
+    const docH = this.canvas.height;
+
+    this.gridCtx.strokeStyle = 'rgba(128, 128, 128, 0.3)';
+    this.gridCtx.lineWidth = 1;
+    this.gridCtx.beginPath();
+
+    // Vertical lines at pixel boundaries
+    for (let dx = 0; dx <= docW; dx++) {
+      const sx = Math.round(this.panX + dx * pixelSize) + 0.5;
+      if (sx < -1) continue;
+      if (sx > cw + 1) break;
+      this.gridCtx.moveTo(sx, Math.max(0, this.panY));
+      this.gridCtx.lineTo(sx, Math.min(ch, this.panY + docH * pixelSize));
+    }
+
+    // Horizontal lines at pixel boundaries
+    for (let dy = 0; dy <= docH; dy++) {
+      const sy = Math.round(this.panY + dy * pixelSize) + 0.5;
+      if (sy < -1) continue;
+      if (sy > ch + 1) break;
+      this.gridCtx.moveTo(Math.max(0, this.panX), sy);
+      this.gridCtx.lineTo(Math.min(cw, this.panX + docW * pixelSize), sy);
+    }
+
+    this.gridCtx.stroke();
   }
 
   // Active tool
@@ -197,16 +286,18 @@ export class PaintEngine {
         break;
     }
 
+    const exportCanvas = this.getExportCanvas();
     const dataUrl = quality !== undefined
-      ? this.canvas.toDataURL(mimeType, quality)
-      : this.canvas.toDataURL(mimeType);
+      ? exportCanvas.toDataURL(mimeType, quality)
+      : exportCanvas.toDataURL(mimeType);
 
     await window.electronAPI?.writeImageFile(filePath, dataUrl);
   }
 
   exportToBlob(mimeType: string, quality?: number): Promise<Blob> {
+    const exportCanvas = this.getExportCanvas();
     return new Promise((resolve, reject) => {
-      this.canvas.toBlob(
+      exportCanvas.toBlob(
         (blob) => (blob ? resolve(blob) : reject(new Error('toBlob failed'))),
         mimeType,
         quality,
@@ -219,8 +310,9 @@ export class PaintEngine {
     if (!result) return;
     const img = new Image();
     img.onload = () => {
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.ctx.drawImage(img, 0, 0);
+      const drawCtx = this.getContext();
+      drawCtx.clearRect(0, 0, drawCtx.canvas.width, drawCtx.canvas.height);
+      drawCtx.drawImage(img, 0, 0);
       URL.revokeObjectURL(img.src);
     };
     const binary = atob(result.data);
@@ -232,12 +324,23 @@ export class PaintEngine {
 
   // Document management
 
-  newDocument(width: number, height: number, bgColor: string = '#ffffff'): void {
+  newDocument(width: number, height: number, bgColor = '#ffffff'): void {
     this.canvas.width = width;
     this.canvas.height = height;
-    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })!;
-    this.ctx.fillStyle = bgColor;
-    this.ctx.fillRect(0, 0, width, height);
+
+    if (this.layerManager) {
+      this.layerManager.reset(width, height, bgColor === 'transparent' ? undefined : bgColor);
+      if (this.layerStack) {
+        this.layerStack.style.width = `${width}px`;
+        this.layerStack.style.height = `${height}px`;
+      }
+    } else {
+      this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })!;
+      if (bgColor !== 'transparent') {
+        this.ctx.fillStyle = bgColor;
+        this.ctx.fillRect(0, 0, width, height);
+      }
+    }
     this.resetZoom();
   }
 
@@ -318,7 +421,7 @@ export class PaintEngine {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
-        this.ctx.drawImage(img, 0, 0);
+        this.getContext().drawImage(img, 0, 0);
         URL.revokeObjectURL(url);
       };
       img.src = url;
@@ -328,7 +431,36 @@ export class PaintEngine {
   // Accessors
 
   getContext(): CanvasRenderingContext2D {
+    if (this.layerManager) {
+      const layerCtx = this.layerManager.getActiveContext();
+      if (layerCtx) return layerCtx;
+    }
     return this.ctx;
+  }
+
+  setLayerManager(lm: LayerManager): void {
+    this.layerManager = lm;
+    this.layerStack = lm.getLayerStack();
+  }
+
+  getLayerManager(): LayerManager | null {
+    return this.layerManager;
+  }
+
+  resolveLayerContext(layerId: string): CanvasRenderingContext2D {
+    if (this.layerManager) {
+      const layers = this.layerManager.getLayers();
+      const layer = layers.find((l) => l.id === layerId);
+      if (layer) return layer.ctx;
+    }
+    return this.getContext();
+  }
+
+  private getExportCanvas(): HTMLCanvasElement {
+    if (this.layerManager) {
+      return this.layerManager.getExportCanvas();
+    }
+    return this.canvas;
   }
 
   getCanvas(): HTMLCanvasElement {
@@ -352,11 +484,11 @@ export class PaintEngine {
   }
 
   getSelectionImageData(): ImageData | null {
-    return this.selectionTool?.getSelectionImageData(this.ctx) ?? null;
+    return this.selectionTool?.getSelectionImageData(this.getContext()) ?? null;
   }
 
   clearSelection(): void {
-    this.selectionTool?.clearSelection(this.ctx);
+    this.selectionTool?.clearSelection(this.getContext());
   }
 
   setSelectionRect(rect: SelectionRect | null): void {
@@ -371,7 +503,8 @@ export class PaintEngine {
 
   async copySelection(): Promise<void> {
     if (!this.selectionTool?.hasSelection()) return;
-    const imageData = this.selectionTool.getSelectionImageData(this.ctx);
+    const drawCtx = this.getContext();
+    const imageData = this.selectionTool.getSelectionImageData(drawCtx);
     if (!imageData) return;
 
     const tempCanvas = document.createElement('canvas');
@@ -395,7 +528,7 @@ export class PaintEngine {
   async cutSelection(): Promise<void> {
     await this.copySelection();
     if (this.selectionTool?.hasSelection()) {
-      this.selectionTool.clearSelection(this.ctx);
+      this.selectionTool.clearSelection(this.getContext());
     }
   }
 
@@ -415,9 +548,9 @@ export class PaintEngine {
         const imageData = tempCtx.getImageData(0, 0, bitmap.width, bitmap.height);
 
         if (this.selectionTool) {
-          this.selectionTool.setFloatingSelection(imageData, 0, 0, this.ctx);
+          this.selectionTool.setFloatingSelection(imageData, 0, 0, this.getContext());
         } else {
-          this.ctx.putImageData(imageData, 0, 0);
+          this.getContext().putImageData(imageData, 0, 0);
         }
         return;
       }
@@ -438,9 +571,9 @@ export class PaintEngine {
       const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
 
       if (this.selectionTool) {
-        this.selectionTool.setFloatingSelection(imageData, 0, 0, this.ctx);
+        this.selectionTool.setFloatingSelection(imageData, 0, 0, this.getContext());
       } else {
-        this.ctx.putImageData(imageData, 0, 0);
+        this.getContext().putImageData(imageData, 0, 0);
       }
     }
   }

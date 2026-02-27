@@ -8,23 +8,34 @@ import { SelectionTool } from './tools/SelectionTool';
 import { EyedropperTool } from './tools/EyedropperTool';
 import { TextTool } from './tools/TextTool';
 import { CurveTool } from './tools/CurveTool';
+import { LassoTool } from './tools/LassoTool';
+import { GradientTool } from './tools/GradientTool';
 import { UndoManager } from './canvas/UndoManager';
+import { LayerManager } from './canvas/LayerManager';
 import { ColorSelection } from './canvas/ColorSelection';
+import { Filters } from './canvas/Filters';
+import { Transform } from './canvas/Transform';
 import { ColorPicker } from './ui/ColorPicker';
 import { Toolbar } from './ui/Toolbar';
 import { PropertyPanel } from './ui/PropertyPanel';
+import { LayerPanel } from './ui/LayerPanel';
 import { NewDocumentDialog } from './ui/NewDocumentDialog';
 import { ResizeDialog } from './ui/ResizeDialog';
 import type { Tool } from './tools/Tool';
 
 // Canvas & engine
 const canvas = document.getElementById('paint-canvas') as HTMLCanvasElement;
+const canvasContainer = document.getElementById('canvas-container')!;
 const engine = new PaintEngine(canvas, 1024, 768);
-const ctx = engine.getContext();
 
-// Fill with white background
-ctx.fillStyle = 'white';
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+// Fill with white background (before layer init transfers content)
+const initCtx = engine.getContext();
+initCtx.fillStyle = 'white';
+initCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+// Initialize layer system
+const layerManager = new LayerManager(canvasContainer, canvas, canvas.width, canvas.height);
+engine.setLayerManager(layerManager);
 
 // Initialize tools
 const brushTool = new BrushTool();
@@ -35,6 +46,8 @@ const selectionTool = new SelectionTool();
 const eyedropperTool = new EyedropperTool();
 const textTool = new TextTool();
 const curveTool = new CurveTool();
+const lassoTool = new LassoTool();
+const gradientTool = new GradientTool();
 const colorSelection = new ColorSelection(canvas);
 
 // Wire eyedropper and selection tool into PaintEngine
@@ -66,6 +79,9 @@ const propertyPanel = new PropertyPanel(document.getElementById('property-panel'
   onCursorChange: (cursor) => {
     canvas.style.cursor = cursor;
   },
+  onGradientModeChange: (mode) => {
+    gradientTool.gradientMode = mode;
+  },
   onFontFamilyChange: (family) => {
     textTool.fontFamily = family;
   },
@@ -84,6 +100,12 @@ const propertyPanel = new PropertyPanel(document.getElementById('property-panel'
   onCurveTypeChange: (type) => {
     curveTool.curveType = type;
   },
+  onOpacityChange: (opacity) => {
+    brushTool.opacity = opacity;
+  },
+  onHardnessChange: (hardness) => {
+    brushTool.hardness = hardness;
+  },
 });
 
 // ColorSelection tool wrapper
@@ -97,8 +119,8 @@ const selectionToolWrapper: Tool = {
     const y = e.clientY - rect.top;
     colorSelection.select(drawCtx, x, y, propertyPanel.getGradiance());
   },
-  onPointerMove() {},
-  onPointerUp() {},
+  onPointerMove() { /* no-op */ },
+  onPointerUp() { /* no-op */ },
 };
 
 // Tool map
@@ -106,8 +128,10 @@ const toolMap: Record<string, Tool> = {
   brush: brushTool,
   eraser: eraserTool,
   fill: fillTool,
+  gradient: gradientTool,
   selection: selectionToolWrapper,
   marquee: selectionTool,
+  lasso: lassoTool,
   eyedropper: eyedropperTool,
   text: textTool,
   line: shapeTool,
@@ -131,12 +155,14 @@ function selectTool(name: string): void {
 }
 
 // Wire color changes
-colorPicker.onChange((fg) => {
+colorPicker.onChange((fg, bg) => {
   brushTool.color = fg;
   shapeTool.color = fg;
   shapeTool.fillColor = fg;
   textTool.color = fg;
   curveTool.color = fg;
+  gradientTool.foregroundColor = fg;
+  gradientTool.backgroundColor = bg;
   const r = parseInt(fg.slice(1, 3), 16);
   const g_val = parseInt(fg.slice(3, 5), 16);
   const b = parseInt(fg.slice(5, 7), 16);
@@ -151,6 +177,7 @@ eyedropperTool.onColorSampled = (color: string) => {
   shapeTool.fillColor = color;
   textTool.color = color;
   curveTool.color = color;
+  gradientTool.foregroundColor = color;
   const r = parseInt(color.slice(1, 3), 16);
   const g_val = parseInt(color.slice(3, 5), 16);
   const b = parseInt(color.slice(5, 7), 16);
@@ -161,16 +188,19 @@ eyedropperTool.onColorSampled = (color: string) => {
 toolbar.onToolChange((name) => selectTool(name));
 
 // Save undo state before drawing starts
+const layerResolver = (id: string) => engine.resolveLayerContext(id);
+
 canvas.addEventListener('pointerdown', () => {
-  undoManager.saveState(ctx);
+  const lm = engine.getLayerManager();
+  undoManager.saveState(engine.getContext(), lm?.getActiveLayerId());
 });
 
 function undo(): void {
-  undoManager.undo(ctx);
+  undoManager.undo(engine.getContext(), layerResolver);
 }
 
 function redo(): void {
-  undoManager.redo(ctx);
+  undoManager.redo(engine.getContext(), layerResolver);
 }
 
 // Wire Electron menu events
@@ -218,11 +248,42 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     e.preventDefault();
     const c = engine.getCanvas();
     const dialog = new ResizeDialog(c.width, c.height, (w, h, anchor, bg) => {
-      undoManager.saveState(ctx);
+      undoManager.saveState(engine.getContext(), engine.getLayerManager()?.getActiveLayerId());
       engine.resizeCanvas(w, h, anchor, bg);
       canvasSizeEl.textContent = `${w} × ${h}`;
     });
     dialog.show();
+    return;
+  }
+
+  // Filter shortcuts
+  if (isMeta && e.key === '\'' && !e.shiftKey) {
+    e.preventDefault();
+    engine.toggleGrid();
+    return;
+  }
+  if (isMeta && e.key === 'i' && !e.shiftKey) {
+    e.preventDefault();
+    const ctx = engine.getContext();
+    undoManager.saveState(ctx, engine.getLayerManager()?.getActiveLayerId());
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.putImageData(Filters.invert(imageData), 0, 0);
+    return;
+  }
+
+  // Transform shortcuts
+  if (isMeta && e.shiftKey && e.key === 'h') {
+    e.preventDefault();
+    const ctx = engine.getContext();
+    undoManager.saveState(ctx, engine.getLayerManager()?.getActiveLayerId());
+    Transform.flipHorizontal(ctx);
+    return;
+  }
+  if (isMeta && e.shiftKey && e.key === 'j') {
+    e.preventDefault();
+    const ctx = engine.getContext();
+    undoManager.saveState(ctx, engine.getLayerManager()?.getActiveLayerId());
+    Transform.flipVertical(ctx);
     return;
   }
 
@@ -232,8 +293,10 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
       case 'b': selectTool('brush'); toolbar.selectTool('brush'); break;
       case 'e': selectTool('eraser'); toolbar.selectTool('eraser'); break;
       case 'g': selectTool('fill'); toolbar.selectTool('fill'); break;
+      case 'd': selectTool('gradient'); toolbar.selectTool('gradient'); break;
       case 'w': selectTool('selection'); toolbar.selectTool('selection'); break;
       case 'm': selectTool('marquee'); toolbar.selectTool('marquee'); break;
+      case 'a': selectTool('lasso'); toolbar.selectTool('lasso'); break;
       case 'i': selectTool('eyedropper'); toolbar.selectTool('eyedropper'); break;
       case 't': selectTool('text'); toolbar.selectTool('text'); break;
       case 'l': selectTool('line'); toolbar.selectTool('line'); break;
@@ -267,8 +330,71 @@ canvas.addEventListener('pointermove', (e: PointerEvent) => {
   cursorPosEl.textContent = `${Math.round(coords.x)}, ${Math.round(coords.y)}`;
 });
 
+// Dynamic zoom level display
+engine.onZoomChange((zoom) => {
+  zoomLevelEl.textContent = `${Math.round(zoom * 100)}%`;
+});
+
 zoomLevelEl.textContent = `${Math.round(engine.getZoomLevel() * 100)}%`;
 canvasSizeEl.textContent = `${canvas.width} × ${canvas.height}`;
+
+// Dark mode toggle
+const statusBar = document.getElementById('status-bar')!;
+const spacer = document.createElement('span');
+spacer.className = 'status-bar-spacer';
+statusBar.appendChild(spacer);
+
+const themeToggle = document.createElement('button');
+themeToggle.className = 'theme-toggle-btn';
+themeToggle.title = 'Toggle dark/light theme';
+
+function applyTheme(theme: string | null): void {
+  if (theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  updateThemeLabel();
+}
+
+function updateThemeLabel(): void {
+  const current = document.documentElement.getAttribute('data-theme');
+  if (current === 'dark') {
+    themeToggle.textContent = '☀️ Light';
+  } else if (current === 'light') {
+    themeToggle.textContent = '🌙 Dark';
+  } else {
+    themeToggle.textContent = '🔄 Auto';
+  }
+}
+
+function cycleTheme(): void {
+  const current = document.documentElement.getAttribute('data-theme');
+  let next: string | null;
+  if (!current) {
+    next = 'dark';
+  } else if (current === 'dark') {
+    next = 'light';
+  } else {
+    next = null;
+  }
+  if (next) {
+    localStorage.setItem('mac-paint-theme', next);
+  } else {
+    localStorage.removeItem('mac-paint-theme');
+  }
+  applyTheme(next);
+}
+
+themeToggle.addEventListener('click', cycleTheme);
+statusBar.appendChild(themeToggle);
+applyTheme(localStorage.getItem('mac-paint-theme'));
+
+// Grid overlay
+engine.initGrid(canvasContainer);
+
+// Layer panel
+new LayerPanel(document.getElementById('property-panel')!, layerManager);
 
 // Set default tool
 selectTool('brush');

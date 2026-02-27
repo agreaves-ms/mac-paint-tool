@@ -1,4 +1,6 @@
 import type { ShapeMode } from '../tools/ShapeTool';
+import type { GradientMode } from '../tools/GradientTool';
+import { BRUSH_PRESETS } from '../tools/BrushTool';
 
 type ToolName = string;
 
@@ -7,6 +9,8 @@ const SHAPE_TOOLS = ['line', 'rectangle', 'ellipse', 'roundedRect', 'polygon'];
 const TEXT_TOOLS = ['text'];
 const CORNER_RADIUS_TOOLS = ['roundedRect'];
 const CURVE_TOOLS = ['curve'];
+const GRADIENT_TOOLS = ['gradient'];
+const BRUSH_TOOLS = ['brush'];
 
 export interface PropertyCallbacks {
   onLineSizeChange?: (size: number) => void;
@@ -20,6 +24,9 @@ export interface PropertyCallbacks {
   onItalicChange?: (italic: boolean) => void;
   onCornerRadiusChange?: (radius: number) => void;
   onCurveTypeChange?: (type: 'quadratic' | 'cubic') => void;
+  onGradientModeChange?: (mode: GradientMode) => void;
+  onOpacityChange?: (opacity: number) => void;
+  onHardnessChange?: (hardness: number) => void;
 }
 
 export class PropertyPanel {
@@ -57,8 +64,25 @@ export class PropertyPanel {
   // Curve type controls
   private curveTypeSection!: HTMLElement;
 
+  // Gradient mode controls
+  private gradientModeSection!: HTMLElement;
+  private gradientMode: GradientMode = 'linear';
+
+  // Brush controls
+  private opacitySection!: HTMLElement;
+  private opacitySlider!: HTMLInputElement;
+  private opacityValue!: HTMLSpanElement;
+
+  private hardnessSection!: HTMLElement;
+  private hardnessSlider!: HTMLInputElement;
+  private hardnessValue!: HTMLSpanElement;
+
+  private brushPresetsSection!: HTMLElement;
+
   // Current values
   private lineSize = 2;
+  private opacity = 100;
+  private hardness = 100;
   private tolerance = 0;
   private gradiance = 32;
   private shapeMode: ShapeMode = 'stroke';
@@ -89,6 +113,52 @@ export class PropertyPanel {
       this.updateCursorPreview();
     });
     this.container.appendChild(this.lineSizeSection);
+
+    // Opacity section (brush only)
+    this.opacitySection = this.createSection('Opacity');
+    this.opacitySlider = this.createSlider('opacity', 0, 100, this.opacity);
+    this.opacityValue = this.createValueDisplay(this.opacity);
+    const opacityRow = this.createSliderRow(this.opacitySlider, this.opacityValue);
+    this.opacitySection.appendChild(opacityRow);
+    this.opacitySlider.addEventListener('input', () => {
+      this.opacity = parseInt(this.opacitySlider.value, 10);
+      this.opacityValue.textContent = `${this.opacity}%`;
+      this.callbacks.onOpacityChange?.(this.opacity);
+    });
+    this.container.appendChild(this.opacitySection);
+
+    // Hardness section (brush only)
+    this.hardnessSection = this.createSection('Hardness');
+    this.hardnessSlider = this.createSlider('hardness', 0, 100, this.hardness);
+    this.hardnessValue = this.createValueDisplay(this.hardness);
+    const hardnessRow = this.createSliderRow(this.hardnessSlider, this.hardnessValue);
+    this.hardnessSection.appendChild(hardnessRow);
+    this.hardnessSlider.addEventListener('input', () => {
+      this.hardness = parseInt(this.hardnessSlider.value, 10);
+      this.hardnessValue.textContent = `${this.hardness}%`;
+      this.callbacks.onHardnessChange?.(this.hardness);
+    });
+    this.container.appendChild(this.hardnessSection);
+
+    // Brush presets section
+    this.brushPresetsSection = this.createSection('Presets');
+    const presetsGroup = document.createElement('div');
+    presetsGroup.className = 'prop-mode-group';
+    presetsGroup.style.flexWrap = 'wrap';
+    for (const preset of BRUSH_PRESETS) {
+      const btn = document.createElement('button');
+      btn.className = 'prop-mode-btn';
+      btn.textContent = preset.name;
+      btn.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        this.setLineSize(preset.size);
+        this.setOpacity(preset.opacity);
+        this.setHardness(preset.hardness);
+      });
+      presetsGroup.appendChild(btn);
+    }
+    this.brushPresetsSection.appendChild(presetsGroup);
+    this.container.appendChild(this.brushPresetsSection);
 
     // Tolerance section
     this.toleranceSection = this.createSection('Tolerance');
@@ -254,6 +324,32 @@ export class PropertyPanel {
     this.curveTypeSection.appendChild(curveGroup);
     this.container.appendChild(this.curveTypeSection);
 
+    // Gradient mode section
+    this.gradientModeSection = this.createSection('Gradient Mode');
+    const gradientGroup = document.createElement('div');
+    gradientGroup.className = 'prop-mode-group';
+    const gradientModes: { label: string; value: GradientMode }[] = [
+      { label: 'Linear', value: 'linear' },
+      { label: 'Radial', value: 'radial' },
+    ];
+    for (const gm of gradientModes) {
+      const btn = document.createElement('button');
+      btn.className = 'prop-mode-btn';
+      btn.textContent = gm.label;
+      btn.dataset.gradientMode = gm.value;
+      if (gm.value === this.gradientMode) btn.classList.add('active');
+      btn.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        this.gradientMode = gm.value;
+        gradientGroup.querySelectorAll('.prop-mode-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.callbacks.onGradientModeChange?.(this.gradientMode);
+      });
+      gradientGroup.appendChild(btn);
+    }
+    this.gradientModeSection.appendChild(gradientGroup);
+    this.container.appendChild(this.gradientModeSection);
+
     this.updateVisibility();
   }
 
@@ -301,12 +397,16 @@ export class PropertyPanel {
 
   private updateVisibility(): void {
     this.lineSizeSection.style.display = STROKE_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.opacitySection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.hardnessSection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.brushPresetsSection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
     this.toleranceSection.style.display = this.activeTool === 'fill' ? '' : 'none';
     this.gradianceSection.style.display = this.activeTool === 'selection' ? '' : 'none';
     this.shapeModeSection.style.display = SHAPE_TOOLS.includes(this.activeTool) ? '' : 'none';
     this.textSection.style.display = TEXT_TOOLS.includes(this.activeTool) ? '' : 'none';
     this.cornerRadiusSection.style.display = CORNER_RADIUS_TOOLS.includes(this.activeTool) ? '' : 'none';
     this.curveTypeSection.style.display = CURVE_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.gradientModeSection.style.display = GRADIENT_TOOLS.includes(this.activeTool) ? '' : 'none';
   }
 
   private updateCursorPreview(): void {
@@ -351,5 +451,27 @@ export class PropertyPanel {
     this.lineSizeValue.textContent = String(value);
     this.callbacks.onLineSizeChange?.(value);
     this.updateCursorPreview();
+  }
+
+  getOpacity(): number {
+    return this.opacity;
+  }
+
+  setOpacity(value: number): void {
+    this.opacity = value;
+    this.opacitySlider.value = String(value);
+    this.opacityValue.textContent = `${value}%`;
+    this.callbacks.onOpacityChange?.(value);
+  }
+
+  getHardness(): number {
+    return this.hardness;
+  }
+
+  setHardness(value: number): void {
+    this.hardness = value;
+    this.hardnessSlider.value = String(value);
+    this.hardnessValue.textContent = `${value}%`;
+    this.callbacks.onHardnessChange?.(value);
   }
 }
