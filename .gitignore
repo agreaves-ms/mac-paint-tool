@@ -35,4 +35,12 @@ yarn-error.log*
 # Coverage
 coverage/
 
+# Playwright test output
+tests/playwright/output/
+.playwright-mcp/
+
+# .NET build artifacts
+tests/playwright/**/bin/
+tests/playwright/**/obj/
+
 # .copilot-tracking/

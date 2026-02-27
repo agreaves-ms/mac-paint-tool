@@ -75,3 +75,53 @@ Full-canvas pixel scan with Euclidean distance against target color. Gradiance s
 - Skip shortcuts when `e.target instanceof HTMLInputElement`
 - Checkerboard background for transparency via CSS on canvas container
 - Dark mode via CSS variables + `prefers-color-scheme` media query
+
+## Testing with Playwright MCP
+
+### Starting the App for Playwright
+
+The Electron Forge Vite dev server (`npm run start`) is **not accessible** from an external browser. Playwright's Chromium cannot navigate to it — `page.goto` will timeout or abort because the Electron shell intercepts the renderer URL.
+
+**Use a standalone Vite dev server instead:**
+
+```bash
+npx vite --config vite.renderer.config.ts --port 5174
+```
+
+- This serves the renderer HTML/CSS/JS on `http://localhost:5174` without the Electron shell.
+- Port 5174 avoids conflicts with Electron Forge's port 5173.
+- `window.electronAPI` (preload bridge) is **not available** in standalone mode — file dialogs, clipboard IPC, and menu event listeners will not work. Test canvas drawing and UI interactions only.
+
+### Playwright MCP Tool Usage
+
+**Navigation:**
+- `mcp_microsoft_pla_browser_navigate` with `url: "http://localhost:5174"` to load the app.
+
+**Inspecting the page:**
+- `mcp_microsoft_pla_browser_snapshot` returns an accessible YAML tree of the DOM with `ref` IDs for each element.
+- `mcp_microsoft_pla_browser_take_screenshot` requires `type: "png"` parameter — omitting `type` causes an "invalid input" error. Use `fullPage: true` for full-page captures.
+- `mcp_microsoft_pla_browser_console_messages` to check for runtime errors.
+
+**Interacting with elements:**
+- `mcp_microsoft_pla_browser_click` with the `ref` from a snapshot to click buttons/tools.
+- `mcp_microsoft_pla_browser_evaluate` to run JavaScript in the page context. Pass a `function` parameter as a string like `"() => { ... }"`.
+
+**Drawing on the canvas:**
+- Use `mcp_microsoft_pla_browser_evaluate` to call Canvas 2D API directly on `document.getElementById('paint-canvas')`.
+- Pointer event-based drawing through `mcp_microsoft_pla_browser_drag` works but direct `ctx` drawing via `evaluate` is more reliable for complex shapes.
+
+**Saving canvas output:**
+- Trigger a download via `evaluate`: create an `<a>` element with `download` attribute and `canvas.toDataURL()` as href, then `.click()` it.
+- Downloaded files land in `.playwright-mcp/` directory.
+- Copy from `.playwright-mcp/` to the desired location with a shell command.
+
+### Pitfalls to Avoid
+
+1. **`page.goto` fails with Electron Forge dev server** — The Electron Forge Vite server on port 5173 serves content intended for the Electron renderer process. Navigating to it from Playwright causes `net::ERR_ABORTED` or infinite timeouts. Always use a standalone Vite server.
+2. **`take_screenshot` requires `type` parameter** — Calling `mcp_microsoft_pla_browser_take_screenshot` without `type: "png"` (or `"jpeg"`) returns a validation error: "must have required property 'type'".
+3. **Browser context race conditions** — If navigation fails or is aborted, subsequent Playwright calls may error with "Another browser context is being closed." Call `mcp_microsoft_pla_browser_close` first, then retry navigation.
+4. **`run_code` syntax** — The `mcp_microsoft_pla_browser_run_code` tool expects an async function signature like `async (page) => { ... }`. Bare `const` declarations cause `SyntaxError: Unexpected token 'const'`.
+5. **No `electronAPI` in standalone mode** — File save/open, clipboard, and menu IPC handlers depend on the Electron preload script. These are unavailable when testing via standalone Vite. Use canvas `toDataURL()` + download link pattern instead.
+6. **`fill_form` expects `fields` array** — Don't pass a single `ref` + `value` directly. For sliders, use `evaluate` to set `.value` and dispatch an `input` event instead.
+7. **`curl` to Vite dev server may hang** — The Vite dev server uses HTTP keep-alive and may not close connections promptly. Use `lsof -i :PORT` to verify the server is running instead of `curl`.
+8. **Viewport size** — Default viewport may clip the canvas. Use `mcp_microsoft_pla_browser_resize` with `width: 1400, height: 1100` to ensure the full 1024×768 canvas is visible.
