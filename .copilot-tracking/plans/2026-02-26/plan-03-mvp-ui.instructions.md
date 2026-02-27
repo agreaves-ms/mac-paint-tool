@@ -39,44 +39,44 @@ Complete the P0 MVP with UI components, file I/O, keyboard shortcuts, and stylin
 
 ## Implementation Checklist
 
-### [ ] Implementation Phase 1: UI, File I/O and Polish
+### [x] Implementation Phase 1: UI, File I/O and Polish
 
 <!-- parallelizable: false -->
 
-* [ ] Step 3.1: Implement `ColorPicker.ts` — `<input type="color">` + foreground/background swap (X key)
+* [x] Step 3.1: Implement `ColorPicker.ts` — `<input type="color">` + foreground/background swap (X key)
   * Primary and secondary color inputs with classic overlapping squares pattern
   * Default: fg=#000000, bg=#ffffff
   * Details: .copilot-tracking/details/2026-02-26/plan-03-mvp-ui-details.md (Lines 12-37)
-* [ ] Step 3.2: Implement `Toolbar.ts` — tool palette sidebar with icons and active state
+* [x] Step 3.2: Implement `Toolbar.ts` — tool palette sidebar with icons and active state
   * Vertical sidebar left, tool buttons with icons, active tool highlighted
   * Tools: Brush(B), Eraser(E), Fill(G), ColorSelection(W), Line(L), Rectangle(R), Ellipse(O)
   * Details: .copilot-tracking/details/2026-02-26/plan-03-mvp-ui-details.md (Lines 38-64)
-* [ ] Step 3.3: Implement `PropertyPanel.ts` — line size slider, tolerance slider, fill mode toggle
+* [x] Step 3.3: Implement `PropertyPanel.ts` — line size slider, tolerance slider, fill mode toggle
   * Line size 1-100, tolerance 0-255, gradiance 0-255, shape mode toggle
   * Brush size cursor preview via canvas data URL
   * Details: .copilot-tracking/details/2026-02-26/plan-03-mvp-ui-details.md (Lines 65-109)
-* [ ] Step 3.4: Implement zoom/pan — CSS transform scale + mouse wheel/trackpad pinch zoom
+* [x] Step 3.4: Implement zoom/pan — CSS transform scale + mouse wheel/trackpad pinch zoom
   * Zoom levels 25%-1600%, cursor-centered zoom, Space+drag pan
   * Update PaintEngine coordinate mapping for zoom offset
   * Details: .copilot-tracking/details/2026-02-26/plan-03-mvp-ui-details.md (Lines 110-137)
-* [ ] Step 3.5: Implement file I/O — Electron `dialog` + Canvas blob export
+* [x] Step 3.5: Implement file I/O — Electron `dialog` + Canvas blob export
   * Main process IPC handlers for open/save dialogs
   * Preload contextBridge for electronAPI
   * Renderer save (canvas.toBlob) and open (Image + drawImage)
   * Details: .copilot-tracking/details/2026-02-26/plan-03-mvp-ui-details.md (Lines 138-214)
-* [ ] Step 3.6: Implement New Document action — File > New / Ctrl+N with dimension dialog
+* [x] Step 3.6: Implement New Document action — File > New / Ctrl+N with dimension dialog
   * Width/height inputs, bg color, presets, unsaved changes prompt
   * PaintEngine.newDocument() method, reset undo history
   * Details: .copilot-tracking/details/2026-02-26/plan-03-mvp-ui-details.md (Lines 215-242)
-* [ ] Step 3.7: Implement keyboard shortcuts — undo/redo, tool switching, brush size
+* [x] Step 3.7: Implement keyboard shortcuts — undo/redo, tool switching, brush size
   * Ctrl/⌘+Z/Y undo/redo, single-key tool switching, X swap colors, [] brush size
   * Guard against firing in input fields
   * Details: .copilot-tracking/details/2026-02-26/plan-03-mvp-ui-details.md (Lines 243-291)
-* [ ] Step 3.8: Implement `app.css` — layout styling, tool icons, slider styling
+* [x] Step 3.8: Implement `app.css` — layout styling, tool icons, slider styling
   * CSS Grid: toolbar 48px left, canvas center, property panel 200px right
   * Toolbar buttons 40x40, canvas overflow scroll, checkerboard transparency
   * Details: .copilot-tracking/details/2026-02-26/plan-03-mvp-ui-details.md (Lines 292-316)
-* [ ] Step 3.9: Validate Phase 3 — complete P0 MVP end-to-end
+* [x] Step 3.9: Validate Phase 3 — complete P0 MVP end-to-end
   * 10-step manual test workflow: draw, fill, select, new doc, undo/redo, save/open, keyboard shortcuts
   * Commands: `npx tsc --noEmit`, `npm start`
   * Details: .copilot-tracking/details/2026-02-26/plan-03-mvp-ui-details.md (Lines 317-343)

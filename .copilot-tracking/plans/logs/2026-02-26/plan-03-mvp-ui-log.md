@@ -39,6 +39,12 @@ Items identified during planning that fall outside current scope.
 * WI-01: Sub-manager extraction — Consider extracting ZoomManager and FileManager from PaintEngine.ts during or after this plan (1–2 extra steps) to reduce Plan 4–5 modification pressure on PaintEngine.ts
   * Source: plan-splitting-strategy-research.md Section 8
   * Dependency: Should evaluate before Plan 04 starts
+* WI-02: Tool coordinate fix — All existing tools (BrushTool, EraserTool, ShapeTool, FillTool) use inline getCanvasCoords with getBoundingClientRect() without dividing by zoom. At zoom levels ≠ 1.0, tools will draw at incorrect positions. Each tool should delegate to PaintEngine.mapCoordinates() instead of using its own coordinate helper. (high priority)
+  * Source: Phase 1, Step 3.4 implementor
+  * Dependency: None — can be done independently
+* WI-03: Toolbar double-call cleanup — Keyboard shortcut tool selection calls both selectTool(name) and toolbar.selectTool(name), where the latter fires onToolChangeCallback → selectTool again. Harmless but could be cleaned up with a setActive method that updates visual state without callback. (low priority)
+  * Source: Phase 1, Step 3.7 implementor
+  * Dependency: None
 
 ## User Decisions
 

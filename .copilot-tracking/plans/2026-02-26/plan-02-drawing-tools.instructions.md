@@ -38,23 +38,23 @@ Implement all P0 drawing tools as standalone files implementing the Tool interfa
 
 ## Implementation Checklist
 
-### [ ] Implementation Phase 1: P0 Drawing Tools
+### [x] Implementation Phase 1: P0 Drawing Tools
 
 <!-- parallelizable: false -->
 
-* [ ] Step 2.3: Implement `BrushTool.ts` — freehand drawing with `quadraticCurveTo` smoothing, line size slider
+* [x] Step 2.3: Implement `BrushTool.ts` — freehand drawing with `quadraticCurveTo` smoothing, line size slider
   * Details: .copilot-tracking/details/2026-02-26/plan-02-drawing-tools-details.md (Lines 13-47)
-* [ ] Step 2.4: Implement `EraserTool.ts` — `globalCompositeOperation: 'destination-out'`, line size slider
+* [x] Step 2.4: Implement `EraserTool.ts` — `globalCompositeOperation: 'destination-out'`, line size slider
   * Details: .copilot-tracking/details/2026-02-26/plan-02-drawing-tools-details.md (Lines 48-72)
-* [ ] Step 2.5: Implement `ShapeTool.ts` — line, rectangle, ellipse with stroke/fill toggle, line size slider
+* [x] Step 2.5: Implement `ShapeTool.ts` — line, rectangle, ellipse with stroke/fill toggle, line size slider
   * Details: .copilot-tracking/details/2026-02-26/plan-02-drawing-tools-details.md (Lines 73-106)
-* [ ] Step 2.6: Implement `FloodFill.ts` and `FillTool.ts` — scanline queue-based flood fill with tolerance parameter, plus thin wrapper implementing Tool interface
+* [x] Step 2.6: Implement `FloodFill.ts` and `FillTool.ts` — scanline queue-based flood fill with tolerance parameter, plus thin wrapper implementing Tool interface
   * Details: .copilot-tracking/details/2026-02-26/plan-02-drawing-tools-details.md (Lines 107-176)
-* [ ] Step 2.7: Implement `ColorSelection.ts` — full-canvas pixel scan with Euclidean distance, gradiance slider, marching ants overlay
+* [x] Step 2.7: Implement `ColorSelection.ts` — full-canvas pixel scan with Euclidean distance, gradiance slider, marching ants overlay
   * Details: .copilot-tracking/details/2026-02-26/plan-02-drawing-tools-details.md (Lines 177-215)
-* [ ] Step 2.8: Implement `UndoManager.ts` — `ImageData` snapshot stack (50+ levels) with undo/redo
+* [x] Step 2.8: Implement `UndoManager.ts` — `ImageData` snapshot stack (50+ levels) with undo/redo
   * Details: .copilot-tracking/details/2026-02-26/plan-02-drawing-tools-details.md (Lines 216-245)
-* [ ] Step 2.9: Validate Phase 2 — all P0 tools draw correctly
+* [x] Step 2.9: Validate Phase 2 — all P0 tools draw correctly
   * Details: .copilot-tracking/details/2026-02-26/plan-02-drawing-tools-details.md (Lines 246-260)
 
 ## Planning Log
