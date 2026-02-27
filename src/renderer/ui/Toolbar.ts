@@ -9,9 +9,15 @@ const TOOLS: ToolDef[] = [
   { name: 'eraser', icon: '◻', shortcut: 'E' },
   { name: 'fill', icon: '🪣', shortcut: 'G' },
   { name: 'selection', icon: '🎯', shortcut: 'W' },
+  { name: 'marquee', icon: '⬚', shortcut: 'M' },
+  { name: 'eyedropper', icon: '💉', shortcut: 'I' },
+  { name: 'text', icon: 'T', shortcut: 'T' },
   { name: 'line', icon: '╱', shortcut: 'L' },
   { name: 'rectangle', icon: '□', shortcut: 'R' },
   { name: 'ellipse', icon: '○', shortcut: 'O' },
+  { name: 'roundedRect', icon: '▢', shortcut: 'U' },
+  { name: 'polygon', icon: '⬡', shortcut: 'P' },
+  { name: 'curve', icon: '〰', shortcut: 'C' },
 ];
 
 export class Toolbar {

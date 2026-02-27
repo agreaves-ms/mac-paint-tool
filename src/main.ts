@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu, clipboard, nativeImage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import started from 'electron-squirrel-startup';
@@ -66,6 +66,22 @@ const createWindow = () => {
           accelerator: 'CmdOrCtrl+Shift+Z',
           click: () => mainWindow.webContents.send('menu-redo'),
         },
+        { type: 'separator' },
+        {
+          label: 'Copy',
+          accelerator: 'CmdOrCtrl+C',
+          click: () => mainWindow.webContents.send('menu-copy'),
+        },
+        {
+          label: 'Cut',
+          accelerator: 'CmdOrCtrl+X',
+          click: () => mainWindow.webContents.send('menu-cut'),
+        },
+        {
+          label: 'Paste',
+          accelerator: 'CmdOrCtrl+V',
+          click: () => mainWindow.webContents.send('menu-paste'),
+        },
       ],
     },
     {
@@ -118,12 +134,44 @@ const createWindow = () => {
       filters: [
         { name: 'PNG Image', extensions: ['png'] },
         { name: 'JPEG Image', extensions: ['jpg', 'jpeg'] },
+        { name: 'WebP Image', extensions: ['webp'] },
       ],
     });
     if (result.canceled || !result.filePath) return null;
     const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
     fs.writeFileSync(result.filePath, Buffer.from(base64, 'base64'));
     return result.filePath;
+  });
+
+  ipcMain.handle('dialog:getSavePath', async () => {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      filters: [
+        { name: 'PNG Image', extensions: ['png'] },
+        { name: 'JPEG Image', extensions: ['jpg', 'jpeg'] },
+        { name: 'WebP Image', extensions: ['webp'] },
+      ],
+    });
+    if (result.canceled || !result.filePath) return null;
+    return result.filePath;
+  });
+
+  ipcMain.handle('file:writeImage', async (_event, filePath: string, dataUrl: string) => {
+    const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+    fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+    return filePath;
+  });
+
+  // Clipboard IPC handlers
+  ipcMain.handle('clipboard:write-image', (_event, dataUrl: string) => {
+    const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+    const img = nativeImage.createFromBuffer(Buffer.from(base64, 'base64'));
+    clipboard.writeImage(img);
+  });
+
+  ipcMain.handle('clipboard:read-image', () => {
+    const img = clipboard.readImage();
+    if (img.isEmpty()) return null;
+    return img.toDataURL();
   });
 };
 

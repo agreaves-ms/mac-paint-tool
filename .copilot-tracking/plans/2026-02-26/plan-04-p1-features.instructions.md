@@ -42,36 +42,36 @@ Add P1 features to the Mac Paint application: selection tools (rectangular marqu
 
 ## Implementation Checklist
 
-### [ ] Implementation Phase 1: Selection, Text and Clipboard
+### [x] Implementation Phase 1: Selection, Text and Clipboard
 
 <!-- parallelizable: false -->
 
-* [ ] Step 4.1: Implement rectangular marquee selection — drag to select, move, copy, paste
+* [x] Step 4.1: Implement rectangular marquee selection — drag to select, move, copy, paste
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 12-49)
-* [ ] Step 4.2: Implement eyedropper tool — click canvas to sample color, Alt+click from any tool
+* [x] Step 4.2: Implement eyedropper tool — click canvas to sample color, Alt+click from any tool
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 50-75)
-* [ ] Step 4.3: Implement text tool — ctx.fillText() with font picker, size, and color
+* [x] Step 4.3: Implement text tool — ctx.fillText() with font picker, size, and color
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 76-110)
-* [ ] Step 4.4: Implement clipboard integration — Clipboard API for copy/paste images to/from system
+* [x] Step 4.4: Implement clipboard integration — Clipboard API for copy/paste images to/from system
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 111-150)
-* [ ] Step 4.5: Validate Phase 1 — selections work, text renders, clipboard interop with other apps
+* [x] Step 4.5: Validate Phase 1 — selections work, text renders, clipboard interop with other apps
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 151-167)
 
-### [ ] Implementation Phase 2: Canvas Management and Additional Shapes
+### [x] Implementation Phase 2: Canvas Management and Additional Shapes
 
 <!-- parallelizable: false -->
 
-* [ ] Step 5.1: Implement canvas resize/crop — dialog for dimensions, anchor grid, crop to selection
+* [x] Step 5.1: Implement canvas resize/crop — dialog for dimensions, anchor grid, crop to selection
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 172-209)
-* [ ] Step 5.2: Implement export formats — PNG, JPEG, WebP via canvas.toBlob()
+* [x] Step 5.2: Implement export formats — PNG, JPEG, WebP via canvas.toBlob()
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 210-253)
-* [ ] Step 5.3: Implement drag-and-drop — HTML5 drag events to open images
+* [x] Step 5.3: Implement drag-and-drop — HTML5 drag events to open images
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 254-296)
-* [ ] Step 5.4: Implement additional shapes — rounded rectangle, polygon with line size slider
+* [x] Step 5.4: Implement additional shapes — rounded rectangle, polygon with line size slider
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 297-330)
-* [ ] Step 5.5: Implement curve/Bézier tool — quadratic/cubic curves with control points and line size slider
+* [x] Step 5.5: Implement curve/Bézier tool — quadratic/cubic curves with control points and line size slider
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 331-375)
-* [ ] Step 5.6: Validate Phase 2 — canvas resize works, all export formats produce valid files, drag-and-drop opens images, shapes and curves draw correctly
+* [x] Step 5.6: Validate Phase 2 — canvas resize works, all export formats produce valid files, drag-and-drop opens images, shapes and curves draw correctly
   * Details: .copilot-tracking/details/2026-02-26/plan-04-p1-features-details.md (Lines 376-394)
 
 ## Planning Log

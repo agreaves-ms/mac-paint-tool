@@ -45,7 +45,7 @@ Gaps and differences identified between research findings and the implementation
 
 ## Suggested Follow-On Work
 
-Items identified during planning that fall outside current scope.
+Items identified during planning and implementation that fall outside current scope.
 
 * WI-01: Advanced selection modes — add/subtract from selection, feather selection edge, magnetic lasso
   * Source: Research features #25, #26, #29; DR-08
@@ -56,6 +56,26 @@ Items identified during planning that fall outside current scope.
   * Source: Research P3 feature; DR-04
   * Dependency: Would require vector layer concept — significant architecture change beyond bitmap-only canvas
   * Priority: low — niche use case for a bitmap paint application
+
+* WI-03: Undo integration for clipboard/text operations — saveState() before paste, text commit, and selection move
+  * Source: Phase 1 implementation (Step 4.1, 4.3, 4.4)
+  * Dependency: Steps 4.1, 4.3, 4.4 complete
+  * Priority: medium — undo currently only fires on pointerdown, missing clipboard paste and text commit
+
+* WI-04: Zoom-aware overlays — sync selection/text overlay transforms with PaintEngine zoom/pan state
+  * Source: Phase 1 implementation (Step 4.1, 4.3)
+  * Dependency: Steps 4.1, 4.3 complete
+  * Priority: low — overlays display correctly at 1x zoom but not during zoom/pan
+
+* WI-05: cropToSelection keyboard shortcut/menu — wire cropToSelection() to a menu item or shortcut
+  * Source: Phase 2 implementation (Step 5.1)
+  * Dependency: Step 5.1 complete
+  * Priority: low — method exists but has no user-facing trigger
+
+* WI-06: Canvas size status bar sync — update canvasSizeEl after crop and drag-and-drop image load
+  * Source: Phase 2 implementation (Steps 5.1, 5.3)
+  * Dependency: Steps 5.1, 5.3 complete
+  * Priority: low — cosmetic issue only
 
 ## User Decisions
 

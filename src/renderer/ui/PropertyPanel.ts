@@ -2,8 +2,11 @@ import type { ShapeMode } from '../tools/ShapeTool';
 
 type ToolName = string;
 
-const STROKE_TOOLS = ['brush', 'eraser', 'line', 'rectangle', 'ellipse'];
-const SHAPE_TOOLS = ['line', 'rectangle', 'ellipse'];
+const STROKE_TOOLS = ['brush', 'eraser', 'line', 'rectangle', 'ellipse', 'roundedRect', 'polygon', 'curve'];
+const SHAPE_TOOLS = ['line', 'rectangle', 'ellipse', 'roundedRect', 'polygon'];
+const TEXT_TOOLS = ['text'];
+const CORNER_RADIUS_TOOLS = ['roundedRect'];
+const CURVE_TOOLS = ['curve'];
 
 export interface PropertyCallbacks {
   onLineSizeChange?: (size: number) => void;
@@ -11,6 +14,12 @@ export interface PropertyCallbacks {
   onGradianceChange?: (gradiance: number) => void;
   onShapeModeChange?: (mode: ShapeMode) => void;
   onCursorChange?: (cursorCSS: string) => void;
+  onFontFamilyChange?: (family: string) => void;
+  onFontSizeChange?: (size: number) => void;
+  onBoldChange?: (bold: boolean) => void;
+  onItalicChange?: (italic: boolean) => void;
+  onCornerRadiusChange?: (radius: number) => void;
+  onCurveTypeChange?: (type: 'quadratic' | 'cubic') => void;
 }
 
 export class PropertyPanel {
@@ -33,11 +42,32 @@ export class PropertyPanel {
 
   private shapeModeSection!: HTMLElement;
 
+  // Text controls
+  private textSection!: HTMLElement;
+  private fontFamilySelect!: HTMLSelectElement;
+  private fontSizeInput!: HTMLInputElement;
+  private boldBtn!: HTMLButtonElement;
+  private italicBtn!: HTMLButtonElement;
+
+  // Corner radius controls
+  private cornerRadiusSection!: HTMLElement;
+  private cornerRadiusSlider!: HTMLInputElement;
+  private cornerRadiusValue!: HTMLSpanElement;
+
+  // Curve type controls
+  private curveTypeSection!: HTMLElement;
+
   // Current values
   private lineSize = 2;
   private tolerance = 0;
   private gradiance = 32;
   private shapeMode: ShapeMode = 'stroke';
+  private fontFamily = 'Arial';
+  private fontSize = 16;
+  private bold = false;
+  private italic = false;
+  private cornerRadius = 10;
+  private curveType: 'quadratic' | 'cubic' = 'quadratic';
 
   constructor(container: HTMLElement, callbacks?: PropertyCallbacks) {
     this.container = container;
@@ -113,6 +143,117 @@ export class PropertyPanel {
     this.shapeModeSection.appendChild(modeGroup);
     this.container.appendChild(this.shapeModeSection);
 
+    // Text section
+    this.textSection = this.createSection('Text');
+
+    // Font family dropdown
+    const fontFamilyRow = document.createElement('div');
+    fontFamilyRow.className = 'prop-slider-row';
+    this.fontFamilySelect = document.createElement('select');
+    this.fontFamilySelect.className = 'prop-select';
+    const fonts = ['Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana'];
+    for (const f of fonts) {
+      const opt = document.createElement('option');
+      opt.value = f;
+      opt.textContent = f;
+      if (f === this.fontFamily) opt.selected = true;
+      this.fontFamilySelect.appendChild(opt);
+    }
+    this.fontFamilySelect.addEventListener('change', () => {
+      this.fontFamily = this.fontFamilySelect.value;
+      this.callbacks.onFontFamilyChange?.(this.fontFamily);
+    });
+    fontFamilyRow.appendChild(this.fontFamilySelect);
+    this.textSection.appendChild(fontFamilyRow);
+
+    // Font size input
+    const fontSizeRow = document.createElement('div');
+    fontSizeRow.className = 'prop-slider-row';
+    const fontSizeLabel = document.createElement('span');
+    fontSizeLabel.className = 'prop-value';
+    fontSizeLabel.textContent = 'Size';
+    this.fontSizeInput = document.createElement('input');
+    this.fontSizeInput.type = 'number';
+    this.fontSizeInput.className = 'prop-number';
+    this.fontSizeInput.min = '8';
+    this.fontSizeInput.max = '200';
+    this.fontSizeInput.value = String(this.fontSize);
+    this.fontSizeInput.addEventListener('input', () => {
+      this.fontSize = parseInt(this.fontSizeInput.value, 10) || 16;
+      this.callbacks.onFontSizeChange?.(this.fontSize);
+    });
+    fontSizeRow.appendChild(fontSizeLabel);
+    fontSizeRow.appendChild(this.fontSizeInput);
+    this.textSection.appendChild(fontSizeRow);
+
+    // Bold / Italic toggles
+    const styleRow = document.createElement('div');
+    styleRow.className = 'prop-mode-group';
+    this.boldBtn = document.createElement('button');
+    this.boldBtn.className = 'prop-mode-btn';
+    this.boldBtn.textContent = 'B';
+    this.boldBtn.style.fontWeight = 'bold';
+    this.boldBtn.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      this.bold = !this.bold;
+      this.boldBtn.classList.toggle('active', this.bold);
+      this.callbacks.onBoldChange?.(this.bold);
+    });
+    this.italicBtn = document.createElement('button');
+    this.italicBtn.className = 'prop-mode-btn';
+    this.italicBtn.textContent = 'I';
+    this.italicBtn.style.fontStyle = 'italic';
+    this.italicBtn.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      this.italic = !this.italic;
+      this.italicBtn.classList.toggle('active', this.italic);
+      this.callbacks.onItalicChange?.(this.italic);
+    });
+    styleRow.appendChild(this.boldBtn);
+    styleRow.appendChild(this.italicBtn);
+    this.textSection.appendChild(styleRow);
+
+    this.container.appendChild(this.textSection);
+
+    // Corner radius section
+    this.cornerRadiusSection = this.createSection('Corner Radius');
+    this.cornerRadiusSlider = this.createSlider('corner-radius', 0, 50, this.cornerRadius);
+    this.cornerRadiusValue = this.createValueDisplay(this.cornerRadius);
+    const cornerRadiusRow = this.createSliderRow(this.cornerRadiusSlider, this.cornerRadiusValue);
+    this.cornerRadiusSection.appendChild(cornerRadiusRow);
+    this.cornerRadiusSlider.addEventListener('input', () => {
+      this.cornerRadius = parseInt(this.cornerRadiusSlider.value, 10);
+      this.cornerRadiusValue.textContent = String(this.cornerRadius);
+      this.callbacks.onCornerRadiusChange?.(this.cornerRadius);
+    });
+    this.container.appendChild(this.cornerRadiusSection);
+
+    // Curve type section
+    this.curveTypeSection = this.createSection('Curve Type');
+    const curveGroup = document.createElement('div');
+    curveGroup.className = 'prop-mode-group';
+    const curveTypes: { label: string; value: 'quadratic' | 'cubic' }[] = [
+      { label: 'Quadratic', value: 'quadratic' },
+      { label: 'Cubic', value: 'cubic' },
+    ];
+    for (const ct of curveTypes) {
+      const btn = document.createElement('button');
+      btn.className = 'prop-mode-btn';
+      btn.textContent = ct.label;
+      btn.dataset.curveType = ct.value;
+      if (ct.value === this.curveType) btn.classList.add('active');
+      btn.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        this.curveType = ct.value;
+        curveGroup.querySelectorAll('.prop-mode-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.callbacks.onCurveTypeChange?.(this.curveType);
+      });
+      curveGroup.appendChild(btn);
+    }
+    this.curveTypeSection.appendChild(curveGroup);
+    this.container.appendChild(this.curveTypeSection);
+
     this.updateVisibility();
   }
 
@@ -163,6 +304,9 @@ export class PropertyPanel {
     this.toleranceSection.style.display = this.activeTool === 'fill' ? '' : 'none';
     this.gradianceSection.style.display = this.activeTool === 'selection' ? '' : 'none';
     this.shapeModeSection.style.display = SHAPE_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.textSection.style.display = TEXT_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.cornerRadiusSection.style.display = CORNER_RADIUS_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.curveTypeSection.style.display = CURVE_TOOLS.includes(this.activeTool) ? '' : 'none';
   }
 
   private updateCursorPreview(): void {

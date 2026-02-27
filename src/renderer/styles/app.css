@@ -259,3 +259,38 @@ html, body {
   border-color: var(--accent-color);
   color: #ffffff;
 }
+
+/* Text tool overlay */
+.text-tool-overlay {
+  line-height: 1.2;
+  caret-color: var(--accent-color);
+}
+
+/* Property panel controls */
+.prop-select {
+  width: 100%;
+  padding: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.prop-number {
+  width: 60px;
+  padding: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-align: right;
+}
+
+/* Drag-and-drop indicator */
+#paint-canvas.drag-over {
+  outline: 3px dashed var(--accent-color);
+  outline-offset: -3px;
+}
