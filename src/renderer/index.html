@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mac Paint</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="toolbar"></div>
+      <div id="canvas-container">
+        <canvas id="paint-canvas"></canvas>
+      </div>
+      <div id="property-panel"></div>
+      <div id="color-panel"></div>
+      <div id="status-bar">
+        <span id="cursor-pos">0, 0</span>
+        <span id="zoom-level">100%</span>
+        <span id="canvas-size">1024 × 768</span>
+      </div>
+    </div>
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>
