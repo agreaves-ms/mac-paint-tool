@@ -1,0 +1,236 @@
+---
+applyTo: '.copilot-tracking/changes/2026-02-26/mac-paint-app-changes.md'
+---
+<!-- markdownlint-disable-file -->
+# Implementation Plan: Mac Paint App
+
+## Overview
+
+Build a simple but powerful cross-platform paint application using Electron + HTML5 Canvas + TypeScript, delivering core drawing tools with paint bucket (flood fill), color-tolerance selection, and line size slider on all stroke tools across a 4-phase rollout.
+
+## Objectives
+
+### User Requirements
+
+* Paint Bucket (flood fill) with tolerance slider as a core drawing tool — Source: User specification (research scope)
+* Color-tolerance selection tool with gradiance slider — Source: User specification (research scope)
+* Line size slider on ALL drawing/stroke tools — Source: User specification (research scope)
+* Simple but powerful paint app (Paint.NET sweet spot between MS Paint and Krita) — Source: User specification (research scope)
+* Runs locally on Mac, no publishing/cloud — Source: User specification (research scope)
+* Cross-platform preferred (macOS primary, Windows/Linux bonus) — Source: User specification (research scope)
+
+### Derived Objectives
+
+* Use Electron + Vite + TypeScript scaffold — Derived from: Framework comparison in research showing Electron + Canvas provides best pixel manipulation performance (~15ms flood fill), trivial UI widgets, and cross-platform support
+* Implement scanline queue-based flood fill algorithm — Derived from: Research analysis showing scanline approach is faster than recursive with no stack overflow risk
+* Use HTML5 Canvas `getImageData`/`putImageData` for pixel manipulation — Derived from: Research benchmarks showing V8 typed array performance (~15ms flood fill, ~25ms color scan on 4K)
+* 4-phase delivery (MVP → Expected → Powerful → Advanced) — Derived from: Research P0–P3 ranking framework based on frequency of use, user expectations, and satisfaction-to-effort ratio
+* TypeScript throughout for type safety — Derived from: Research technology stack recommendation
+
+## Context Summary
+
+### Project Files
+
+* `.copilot-tracking/research/2026-02-26/mac-paint-app-features-research.md` - Primary research: 170+ features, framework comparison, P0–P3 ranking, tech stack recommendation
+* `.copilot-tracking/research/subagents/2026-02-26/core-features-research.md` - 170+ features across 6 reference apps
+* `.copilot-tracking/research/subagents/2026-02-26/feature-ranking-research.md` - P0–P3 ranking framework, user priority analysis
+* `.copilot-tracking/research/subagents/2026-02-26/cross-platform-framework-research.md` - Electron vs Tauri vs Python comparison
+* `.copilot-tracking/research/subagents/2026-02-26/html5-canvas-patterns-research.md` - Flood fill, color selection, layers, Canvas API patterns
+* `.copilot-tracking/research/subagents/2026-02-26/mac-tech-stack-research.md` - Apple frameworks, architecture, drawing APIs
+
+### References
+
+* [Electron Forge](https://electronforge.io/) - Electron build toolkit with Vite + TypeScript template
+* [MDN: Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API) - HTML5 Canvas reference
+* [MDN: getImageData](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData) - Pixel manipulation API
+* [JS Paint](https://jspaint.app/) - Open-source MS Paint clone validating HTML5 Canvas approach
+* [miniPaint](https://github.com/viliusle/miniPaint) - Multi-layer HTML5 Canvas paint app reference
+
+### Standards References
+
+* Electron Forge Vite TypeScript template conventions
+* HTML5 Canvas 2D API standard patterns
+
+## Implementation Checklist
+
+### [ ] Implementation Phase 1: Project Scaffold & Electron Shell
+
+<!-- parallelizable: false -->
+
+* [ ] Step 1.1: Bootstrap Electron + Vite + TypeScript project using `npm init electron-app@latest`
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 10-40)
+* [ ] Step 1.2: Configure project structure — `src/main.ts`, `src/preload.ts`, `src/renderer/`
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 42-75)
+* [ ] Step 1.3: Set up main HTML layout with canvas container, toolbar sidebar, and property panel
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 77-110)
+* [ ] Step 1.4: Validate scaffold — `npm start` launches Electron window with canvas visible
+  * Run `npm start` and verify window opens with empty canvas
+
+### [ ] Implementation Phase 2: Core Drawing Engine & Tools (P0)
+
+<!-- parallelizable: false -->
+
+* [ ] Step 2.1: Implement `PaintEngine.ts` — canvas initialization, coordinate mapping, rendering loop
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 115-155)
+* [ ] Step 2.2: Implement tool abstraction (`Tool` interface) with `lineWidth` property from shared slider
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 157-185)
+* [ ] Step 2.3: Implement `BrushTool.ts` — freehand drawing with `quadraticCurveTo` smoothing, line size slider
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 187-215)
+* [ ] Step 2.4: Implement `EraserTool.ts` — `globalCompositeOperation: 'destination-out'`, line size slider
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 217-240)
+* [ ] Step 2.5: Implement `ShapeTool.ts` — line, rectangle, ellipse with stroke/fill toggle, line size slider
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 242-285)
+* [ ] Step 2.6: Implement `FloodFill.ts` — scanline queue-based flood fill with tolerance parameter
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 287-330)
+* [ ] Step 2.7: Implement `ColorSelection.ts` — full-canvas pixel scan with Euclidean distance, gradiance slider, marching ants overlay
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 332-380)
+* [ ] Step 2.8: Implement `UndoManager.ts` — `ImageData` snapshot stack (50+ levels) with undo/redo
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 382-415)
+* [ ] Step 2.9: Validate Phase 2 — all P0 tools draw correctly, flood fill works with tolerance, color selection highlights matching pixels
+  * Run `npm start` and manually test each tool
+
+### [ ] Implementation Phase 3: UI, Color, File I/O & Keyboard Shortcuts (P0)
+
+<!-- parallelizable: false -->
+
+* [ ] Step 3.1: Implement `ColorPicker.ts` — `<input type="color">` + foreground/background swap (X key)
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 420-450)
+* [ ] Step 3.2: Implement `Toolbar.ts` — tool palette sidebar with icons and active state
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 452-480)
+* [ ] Step 3.3: Implement `PropertyPanel.ts` — line size slider, tolerance slider, fill mode toggle
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 482-515)
+* [ ] Step 3.4: Implement zoom/pan — CSS transform scale + mouse wheel/trackpad pinch zoom
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 517-545)
+* [ ] Step 3.5: Implement file I/O — Electron `dialog.showOpenDialog`/`dialog.showSaveDialog`, PNG/JPEG read/write
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 547-585)
+* [ ] Step 3.6: Implement New Document action — File > New / Ctrl+N with canvas dimension dialog
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 587-610)
+* [ ] Step 3.7: Implement keyboard shortcuts — Ctrl/⌘+Z (undo), Ctrl/⌘+Y (redo), B (brush), E (eraser), G (fill), etc.
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 612-640)
+* [ ] Step 3.8: Implement `app.css` — layout styling, tool icons, slider styling
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 642-670)
+* [ ] Step 3.9: Validate Phase 3 — complete P0 MVP works end-to-end: draw, fill, select colors, save/open files, create new document
+  * Run `npm start`, test full drawing workflow, File > New, save and reopen a file
+
+### [ ] Implementation Phase 4: Selection, Text & Clipboard (P1)
+
+<!-- parallelizable: false -->
+
+* [ ] Step 4.1: Implement rectangular marquee selection — drag to select, move, copy, paste
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 650-685)
+* [ ] Step 4.2: Implement eyedropper tool — click canvas to sample color, set as foreground
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 687-705)
+* [ ] Step 4.3: Implement text tool — `ctx.fillText()` with font picker, size, and color
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 707-740)
+* [ ] Step 4.4: Implement clipboard integration — Clipboard API for copy/paste images to/from system
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 742-765)
+* [ ] Step 4.5: Validate Phase 4 — selections work, text renders, clipboard interop with other apps
+  * Run `npm start` and test selection, text placement, copy/paste to Preview
+
+### [ ] Implementation Phase 5: Canvas Management & Additional Shapes (P1)
+
+<!-- parallelizable: false -->
+
+* [ ] Step 5.1: Implement canvas resize/crop — dialog for dimensions, crop to selection
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 770-795)
+* [ ] Step 5.2: Implement export formats — PNG, JPEG, WebP via `canvas.toBlob()`
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 797-820)
+* [ ] Step 5.3: Implement drag-and-drop — HTML5 drag events to open images
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 822-845)
+* [ ] Step 5.4: Implement additional shapes — rounded rectangle, polygon with line size slider
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 847-875)
+* [ ] Step 5.5: Implement curve/Bézier tool — quadratic/cubic curves with line size slider
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 877-905)
+* [ ] Step 5.6: Validate Phase 5 — canvas resize works, all export formats produce valid files, drag-and-drop opens images
+  * Run `npm start` and test resize, export, drag-and-drop
+
+### [ ] Implementation Phase 6: Layers & Power Features (P2)
+
+<!-- parallelizable: false -->
+
+* [ ] Step 6.1: Implement layer system — multiple `<canvas>` elements, layer panel UI, add/remove/reorder
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 910-960)
+* [ ] Step 6.2: Implement lasso selection — freeform path-based selection
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 962-985)
+* [ ] Step 6.3: Implement gradient tool — `createLinearGradient()`/`createRadialGradient()`
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 987-1010)
+* [ ] Step 6.4: Implement brush presets — opacity, hardness, preset library
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1012-1035)
+* [ ] Step 6.5: Implement image filters — blur, sharpen, brightness/contrast, invert via pixel manipulation
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1037-1065)
+* [ ] Step 6.6: Implement transform tools — rotate, flip, scale via canvas transform + `drawImage()`
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1067-1095)
+* [ ] Step 6.7: Implement transparency support — alpha channel editing, checkerboard background
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1097-1115)
+* [ ] Step 6.8: Implement dark mode — CSS `prefers-color-scheme` + manual toggle
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1117-1135)
+* [ ] Step 6.9: Implement grid overlay and status bar — pixel grid at high zoom, cursor position, zoom %, canvas size
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1137-1160)
+* [ ] Step 6.10: Validate Phase 6 — layers composite correctly, filters apply, transforms work
+  * Run `npm start` and test layer operations, filter application, transform tools
+
+### [ ] Implementation Phase 7: Advanced Features (P3)
+
+<!-- parallelizable: false -->
+
+* [ ] Step 7.1: Implement blend modes — per-layer `globalCompositeOperation` (multiply, screen, overlay)
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1165-1185)
+* [ ] Step 7.2: Implement layer opacity — per-layer transparency slider
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1187-1200)
+* [ ] Step 7.3: Implement pressure sensitivity — `PointerEvent.pressure` for stylus/trackpad variable width
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1202-1225)
+* [ ] Step 7.4: Implement custom brush engine — user-defined textures, spacing, jitter
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1227-1255)
+* [ ] Step 7.5: Implement curves/levels — color correction with histogram display
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1257-1280)
+* [ ] Step 7.6: Implement symmetry drawing — multi-axis mirror drawing mode
+  * Details: .copilot-tracking/details/2026-02-26/mac-paint-app-details.md (Lines 1282-1305)
+* [ ] Step 7.7: Validate Phase 7 — blend modes composite correctly, pressure sensitivity responds to stylus
+  * Run `npm start` and test each advanced feature
+
+### [ ] Implementation Phase 8: Final Validation
+
+<!-- parallelizable: false -->
+
+* [ ] Step 8.1: Run full project validation
+  * Execute TypeScript compiler `npx tsc --noEmit`
+  * Execute linting if configured (`npm run lint`)
+  * Execute build `npm run make` to produce distributable
+* [ ] Step 8.2: Fix minor validation issues
+  * Iterate on TypeScript errors and build warnings
+  * Apply fixes directly when corrections are straightforward
+* [ ] Step 8.3: End-to-end functional testing
+  * Test complete workflow: new canvas → draw → fill → select colors → add text → save → reopen
+  * Test each tool with line size slider at min/max/mid values
+  * Test paint bucket with tolerance 0, 32, 128, 255
+  * Test color-tolerance selection with gradiance 0 through 255
+  * Test undo/redo through 50+ operations
+* [ ] Step 8.4: Report blocking issues
+  * Document issues requiring additional research
+  * Provide user with next steps and recommended planning
+  * Avoid large-scale fixes within this phase
+
+## Planning Log
+
+See [mac-paint-app-log.md](../../plans/logs/2026-02-26/mac-paint-app-log.md) for discrepancy tracking, implementation paths considered, and suggested follow-on work.
+
+## Dependencies
+
+* Node.js 18+ (20+ recommended)
+* npm (bundled with Node.js)
+* Electron Forge CLI (`@electron-forge/cli`)
+* Vite (bundled via Electron Forge template)
+* TypeScript (bundled via Electron Forge template)
+* macOS, Windows, or Linux for development and testing
+
+## Success Criteria
+
+* `npm start` launches the app with a functional canvas — Traces to: User requirement (local run)
+* Brush, eraser, and all shape tools draw with adjustable line size via slider — Traces to: User requirement (line size slider on all tools)
+* Paint bucket fills contiguous regions with configurable tolerance slider (0–255) — Traces to: User requirement (paint bucket)
+* Color-tolerance selection tool selects matching pixels with gradiance slider and marching ants display — Traces to: User requirement (color-tolerance selection)
+* Undo/redo supports 50+ history levels — Traces to: Research recommendation (P0 feature)
+* Files save and open in PNG/JPEG format via native dialogs — Traces to: Research recommendation (P0 feature)
+* Layers support adding, removing, reordering, and visibility toggling (Phase 6) — Traces to: Research identifying layers as #1 differentiator
+* `npm run make` produces a distributable app bundle — Traces to: Research recommendation (local build and run)
+* Cross-platform: same codebase runs on macOS, Windows, Linux — Traces to: User requirement (cross-platform preferred)

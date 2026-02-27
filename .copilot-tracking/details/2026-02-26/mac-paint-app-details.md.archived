@@ -1,0 +1,1492 @@
+<!-- markdownlint-disable-file -->
+# Implementation Details: Mac Paint App
+
+## Context Reference
+
+Sources: `.copilot-tracking/research/2026-02-26/mac-paint-app-features-research.md`, subagent research documents in `.copilot-tracking/research/subagents/2026-02-26/`
+
+## Implementation Phase 1: Project Scaffold & Electron Shell
+
+<!-- parallelizable: false -->
+
+### Step 1.1: Bootstrap Electron + Vite + TypeScript project
+
+Run the Electron Forge scaffolding command to create the project with Vite + TypeScript template.
+
+```bash
+cd /Users/allengreaves/projects/agreaves-ms/mac-paint-tool
+npm init electron-app@latest . -- --template=vite-typescript
+```
+
+If the directory is not empty (contains `.copilot-tracking/`), bootstrap in a temp directory and move files, or use `--force` if available.
+
+After scaffolding, verify the default app launches:
+```bash
+npm start
+```
+
+Files:
+* `package.json` - Project manifest with Electron Forge scripts
+* `forge.config.ts` - Electron Forge build configuration
+* `tsconfig.json` - TypeScript configuration
+* `vite.main.config.ts` - Vite config for main process
+* `vite.renderer.config.ts` - Vite config for renderer process
+* `vite.preload.config.ts` - Vite config for preload script
+
+Success criteria:
+* `npm start` launches a default Electron window
+* `npx tsc --noEmit` passes with no errors
+
+Context references:
+* mac-paint-app-features-research.md (Lines 591-598) — Bootstrap commands
+
+Dependencies:
+* Node.js 18+ installed
+* npm available
+
+### Step 1.2: Configure project structure
+
+Create the directory structure recommended by the research. Restructure the default scaffold into the paint app architecture.
+
+Create directories:
+```
+src/
+├── main.ts                    (exists from scaffold — modify)
+├── preload.ts                 (exists from scaffold — modify)
+├── renderer/
+│   ├── index.html             (exists from scaffold — move/modify)
+│   ├── app.ts                 (create — app entry point)
+│   ├── canvas/
+│   │   ├── PaintEngine.ts     (create)
+│   │   ├── FloodFill.ts       (create)
+│   │   ├── ColorSelection.ts  (create)
+│   │   └── UndoManager.ts     (create)
+│   ├── tools/
+│   │   ├── Tool.ts            (create — interface)
+│   │   ├── BrushTool.ts       (create)
+│   │   ├── EraserTool.ts      (create)
+│   │   ├── FillTool.ts        (create)
+│   │   ├── SelectionTool.ts   (create)
+│   │   ├── ShapeTool.ts       (create)
+│   │   └── TextTool.ts        (create — Phase 4)
+│   ├── ui/
+│   │   ├── Toolbar.ts         (create)
+│   │   ├── ColorPicker.ts     (create)
+│   │   └── PropertyPanel.ts   (create)
+│   └── styles/
+│       └── app.css            (create)
+└── shared/
+    └── types.ts               (create — shared type definitions)
+```
+
+Files:
+* `src/main.ts` - Modify to set window size, title, and menu
+* `src/preload.ts` - Modify to expose file I/O APIs via contextBridge
+* `src/renderer/index.html` - Modify for paint app layout
+* `src/shared/types.ts` - Create with shared type definitions (Color, Point, ToolType, etc.)
+
+Success criteria:
+* Directory structure matches the plan
+* TypeScript compiles without errors
+
+Context references:
+* mac-paint-app-features-research.md (Lines 605-635) — Project structure
+
+Dependencies:
+* Step 1.1 completion
+
+### Step 1.3: Set up main HTML layout
+
+Create the main HTML layout with canvas container, toolbar sidebar, and property panel areas.
+
+Layout structure:
+```html
+<div id="app">
+  <div id="toolbar"><!-- Tool buttons --></div>
+  <div id="canvas-container">
+    <canvas id="paint-canvas"></canvas>
+  </div>
+  <div id="property-panel"><!-- Tool options: line size, tolerance --></div>
+  <div id="color-panel"><!-- Color picker, fg/bg --></div>
+  <div id="status-bar"><!-- Cursor pos, zoom, canvas size --></div>
+</div>
+```
+
+CSS layout: Use CSS Grid or Flexbox for the main layout. Toolbar on left, canvas center, property panel on right or top.
+
+Files:
+* `src/renderer/index.html` - Main HTML with layout structure
+* `src/renderer/styles/app.css` - Base layout CSS (grid, sizing, scrolling)
+
+Success criteria:
+* HTML layout renders in Electron window
+* Canvas element is visible and fills the center area
+* Toolbar and property panel areas are visible
+
+Context references:
+* mac-paint-app-features-research.md (Lines 605-635) — Project structure
+* html5-canvas-patterns-research.md — Canvas setup patterns
+
+Dependencies:
+* Step 1.2 completion
+
+### Step 1.4: Validate scaffold
+
+Run `npm start` and verify the Electron window opens with the canvas layout visible.
+
+Validation commands:
+* `npx tsc --noEmit` — TypeScript compilation check
+* `npm start` — Visual verification of layout
+
+## Implementation Phase 2: Core Drawing Engine & Tools (P0)
+
+<!-- parallelizable: false -->
+
+### Step 2.1: Implement PaintEngine.ts
+
+Core canvas drawing engine handling initialization, coordinate mapping, and the rendering loop.
+
+```typescript
+// Key responsibilities:
+// - Initialize canvas with configurable width/height
+// - Map screen coordinates to canvas coordinates (accounting for zoom/offset)
+// - Manage active tool state
+// - Handle pointer events (pointerdown, pointermove, pointerup)
+// - Coordinate with UndoManager for state snapshots
+// - Render loop for overlay effects (marching ants, cursor preview)
+```
+
+Key implementation details:
+- Use `PointerEvent` (not MouseEvent) for future pressure sensitivity support
+- Canvas sizing: set `canvas.width`/`canvas.height` attributes (not CSS) for correct pixel resolution
+- Get 2D context with `{ willReadFrequently: true }` for pixel manipulation performance
+- Maintain current tool reference, delegate pointer events to active tool
+- Store canvas context and pass to tools
+
+Files:
+* `src/renderer/canvas/PaintEngine.ts` - Core drawing engine class
+
+Success criteria:
+* PaintEngine initializes canvas with specified dimensions
+* Pointer events are captured and delegated to active tool
+* Coordinate mapping accounts for canvas offset in the layout
+
+Context references:
+* html5-canvas-patterns-research.md — Canvas initialization, coordinate mapping
+* mac-paint-app-features-research.md (Lines 640-660) — Architecture description
+
+Dependencies:
+* Phase 1 completion
+
+### Step 2.2: Implement Tool interface with lineWidth property
+
+Define the `Tool` interface that all drawing tools implement. The interface includes a `lineWidth` property bound to the shared line size slider.
+
+```typescript
+interface Tool {
+  name: string;
+  cursor: string;
+  lineWidth: number;        // From shared line size slider
+  onPointerDown(e: PointerEvent, ctx: CanvasRenderingContext2D): void;
+  onPointerMove(e: PointerEvent, ctx: CanvasRenderingContext2D): void;
+  onPointerUp(e: PointerEvent, ctx: CanvasRenderingContext2D): void;
+  onActivate?(): void;      // Called when tool becomes active
+  onDeactivate?(): void;    // Called when switching away from tool
+}
+```
+
+The `lineWidth` property is set by the PropertyPanel's line size slider and applies to `ctx.lineWidth` before any stroke operation. All tools that draw strokes MUST read from this property.
+
+Files:
+* `src/renderer/tools/Tool.ts` - Tool interface definition
+* `src/shared/types.ts` - Add `ToolType` enum, `Point`, `Color` types
+
+Success criteria:
+* Tool interface defined with lineWidth property
+* Shared types defined for use across tools
+
+Context references:
+* mac-paint-app-features-research.md (Lines 396-410) — Line Size Slider core requirement
+
+Dependencies:
+* Step 2.1 completion
+
+### Step 2.3: Implement BrushTool.ts
+
+Freehand drawing tool using `quadraticCurveTo` for smooth strokes.
+
+Key implementation:
+- On `pointerdown`: begin path, `ctx.moveTo()`, save start point, apply `lineWidth` from slider
+- On `pointermove`: use `quadraticCurveTo()` with midpoints for smooth curves (not `lineTo` which produces jagged lines)
+- On `pointerup`: end path, trigger undo snapshot
+- Set `ctx.lineCap = 'round'` and `ctx.lineJoin = 'round'` for smooth stroke endings
+- Set `ctx.lineWidth` from tool's `lineWidth` property (bound to slider)
+- Set `ctx.strokeStyle` from current foreground color
+
+Smoothing algorithm:
+```typescript
+// For each pair of points, draw a curve to the midpoint
+const midX = (prevX + currX) / 2;
+const midY = (prevY + currY) / 2;
+ctx.quadraticCurveTo(prevX, prevY, midX, midY);
+```
+
+Files:
+* `src/renderer/tools/BrushTool.ts` - Brush tool implementation
+
+Success criteria:
+* Freehand strokes appear smooth (not jagged)
+* Stroke width matches the line size slider value
+* Stroke color matches the foreground color
+
+Context references:
+* mac-paint-app-features-research.md (Lines 487-490) — Brush tool with quadraticCurveTo smoothing
+* html5-canvas-patterns-research.md — Stroke smoothing patterns
+
+Dependencies:
+* Step 2.2 completion
+
+### Step 2.4: Implement EraserTool.ts
+
+Eraser tool using `globalCompositeOperation: 'destination-out'` to erase to transparency.
+
+Key implementation:
+- Same stroke mechanics as BrushTool (smooth curves via `quadraticCurveTo`)
+- Before stroke: `ctx.globalCompositeOperation = 'destination-out'`
+- After stroke: restore `ctx.globalCompositeOperation = 'source-over'`
+- `ctx.lineWidth` from tool's `lineWidth` property (bound to slider)
+- Cursor should show a circle matching the current eraser size
+
+Files:
+* `src/renderer/tools/EraserTool.ts` - Eraser tool implementation
+
+Success criteria:
+* Eraser removes pixels to transparency (not white)
+* Eraser size matches line size slider
+* Canvas compositing mode is properly restored after erasing
+
+Context references:
+* mac-paint-app-features-research.md (Lines 491-491) — Eraser with destination-out
+
+Dependencies:
+* Step 2.3 completion (shares smoothing logic)
+
+### Step 2.5: Implement ShapeTool.ts
+
+Shape drawing tool supporting line, rectangle, and ellipse with stroke/fill toggle.
+
+Key implementation:
+- On `pointerdown`: record start point
+- On `pointermove`: draw shape preview on a temporary overlay (clear and redraw each move)
+- On `pointerup`: commit shape to main canvas, trigger undo snapshot
+- Shape types: `line`, `rectangle`, `ellipse`
+- Mode toggle: `stroke`, `fill`, `strokeAndFill`
+- Hold Shift for constrained proportions (square, circle, 45° line)
+- `ctx.lineWidth` from tool's `lineWidth` property for all stroke operations
+- Use `ctx.strokeRect()`, `ctx.fillRect()` for rectangles
+- Use `ctx.ellipse()` for ellipses
+- Use `ctx.moveTo()`/`ctx.lineTo()` for lines
+
+Shape preview strategy: Use a temporary canvas overlay (same size, positioned on top) for the preview. On `pointerup`, draw the final shape on the main canvas and clear the overlay.
+
+Files:
+* `src/renderer/tools/ShapeTool.ts` - Shape tool implementation
+
+Success criteria:
+* Line, rectangle, and ellipse draw correctly
+* Shift-constrain produces perfect squares, circles, and 45° lines
+* Line width matches slider value
+* Stroke/fill toggle works correctly
+
+Context references:
+* mac-paint-app-features-research.md (Lines 492-492) — Shape tools with line size slider
+* html5-canvas-patterns-research.md — Shape drawing patterns
+
+Dependencies:
+* Step 2.2 completion
+
+### Step 2.6: Implement FloodFill.ts
+
+Scanline queue-based flood fill with configurable tolerance parameter.
+
+Algorithm:
+1. Read pixel color at click point using `getImageData()`
+2. Create `Uint8Array` visited flags (canvas width × height)
+3. Initialize queue with click point
+4. For each point in queue:
+   a. Scan left and right to find scanline boundaries (matching pixels within tolerance)
+   b. Fill the scanline with the fill color
+   c. Check row above and below for new fill seeds
+   d. Add unfilled matching pixels above/below to queue
+5. `putImageData()` the modified pixel data back to canvas
+
+Color tolerance using Euclidean distance:
+```typescript
+function colorDistance(r1: number, g1: number, b1: number, a1: number,
+                      r2: number, g2: number, b2: number, a2: number): number {
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2 + (a1 - a2) ** 2);
+}
+// tolerance 0 = exact match, tolerance 255 = very liberal
+// Max distance ≈ 510 (√(255²×4))
+```
+
+Performance target: ~15ms on 1024×768 canvas.
+
+Use `pop()` (not `shift()`) for queue operations — `shift()` is O(n) on arrays.
+
+Files:
+* `src/renderer/canvas/FloodFill.ts` - Flood fill algorithm
+
+Discrepancy references:
+* DD-06 (DR-06): Uses Euclidean RGB distance instead of perceptual weighting — standard and sufficient
+
+Success criteria:
+* Flood fill colors contiguous regions correctly
+* Tolerance 0 fills only exact color matches
+* Tolerance 32 fills through anti-aliased edges
+* Performance: <20ms on 1024×768
+* No stack overflow on large uniform regions
+
+Context references:
+* mac-paint-app-features-research.md (Lines 343-366) — Scanline flood fill algorithm
+* html5-canvas-patterns-research.md — Complete flood fill implementation
+
+Dependencies:
+* Step 2.1 completion (PaintEngine provides canvas context)
+
+### Step 2.7: Implement ColorSelection.ts
+
+Full-canvas pixel scan selecting all pixels matching a target color within a configurable gradiance/tolerance range.
+
+Algorithm:
+1. On click: read target pixel color using `getImageData(x, y, 1, 1)`
+2. Read full canvas `ImageData`
+3. Create selection mask: `Uint8Array(width * height)` — 1 = selected, 0 = not
+4. Iterate all pixels, compute Euclidean color distance to target
+5. If distance ≤ gradiance slider value → mark as selected in mask
+6. Render marching ants on selection boundary
+
+Gradiance slider: `<input type="range" min="0" max="255" value="32">` in property panel.
+
+Marching ants overlay:
+- Separate overlay `<canvas>` positioned on top of main canvas
+- Trace selection boundary using edge detection on the binary mask
+- Draw boundary path with `setLineDash([4, 4])` and animated `lineDashOffset`
+- Use `requestAnimationFrame` to animate the dash offset
+
+Performance target: <30ms for full-canvas scan on 4K (3840×2160).
+
+Files:
+* `src/renderer/canvas/ColorSelection.ts` - Color-tolerance selection algorithm
+
+Success criteria:
+* Clicking a pixel selects all matching pixels within gradiance threshold
+* Gradiance 0 selects only exact color matches
+* Gradiance 255 selects nearly everything
+* Marching ants animate around selection boundary
+* Selection mask is available for copy/cut/delete operations
+
+Context references:
+* mac-paint-app-features-research.md (Lines 368-395) — Color-tolerance selection with marching ants
+* html5-canvas-patterns-research.md — Selection and marching ants implementation
+
+Dependencies:
+* Step 2.1 completion (PaintEngine provides canvas)
+
+### Step 2.8: Implement UndoManager.ts
+
+Canvas state snapshot stack supporting 50+ undo/redo levels.
+
+Implementation:
+- `undoStack: ImageData[]` — snapshots before each operation
+- `redoStack: ImageData[]` — snapshots for redo
+- `saveState()`: push current `ctx.getImageData(0, 0, w, h)` onto undoStack; clear redoStack
+- `undo()`: push current state to redoStack; pop undoStack; `ctx.putImageData()` to canvas
+- `redo()`: push current state to undoStack; pop redoStack; `ctx.putImageData()` to canvas
+- Max history: 50 snapshots (configurable). When exceeding max, drop oldest from undoStack.
+- Memory consideration: 1024×768×4 = ~3MB per snapshot. 50 snapshots = ~150MB. Acceptable for modern systems.
+
+Call `saveState()` before every destructive operation (brush stroke start, fill, shape commit, etc.).
+
+Files:
+* `src/renderer/canvas/UndoManager.ts` - Undo/redo state management
+
+Success criteria:
+* Undo reverses the last operation immediately
+* Redo reapplies an undone operation
+* 50+ undo levels are preserved
+* New operations after undo clear the redo stack
+
+Context references:
+* mac-paint-app-features-research.md (Lines 495-495) — Undo/Redo snapshot stack
+
+Dependencies:
+* Step 2.1 completion
+
+### Step 2.9: Validate Phase 2
+
+Run `npm start` and manually test:
+- Brush draws smooth freehand strokes at various line sizes
+- Eraser removes pixels
+- Shapes draw correctly with line size slider
+- Paint bucket fills with tolerance slider
+- Color-tolerance selection highlights matching pixels
+- Undo/redo works through all operations
+
+Validation commands:
+* `npx tsc --noEmit` — TypeScript compilation
+* `npm start` — Visual verification
+
+## Implementation Phase 3: UI, Color, File I/O & Keyboard Shortcuts (P0)
+
+<!-- parallelizable: false -->
+
+### Step 3.1: Implement ColorPicker.ts
+
+Color picker with foreground/background color system and swap functionality.
+
+Implementation:
+- Primary: `<input type="color">` for foreground color
+- Secondary: `<input type="color">` for background color
+- Swap button and X keyboard shortcut to swap foreground/background
+- Display two overlapping color squares (foreground on top, background behind) — classic MSPaint/Photoshop pattern
+- Default: foreground = black (#000000), background = white (#ffffff)
+
+Files:
+* `src/renderer/ui/ColorPicker.ts` - Color picker component
+
+Success criteria:
+* Color picker opens native color dialog
+* Foreground/background colors display correctly
+* X key swaps colors
+* Tools use current foreground color for drawing
+
+Context references:
+* mac-paint-app-features-research.md (Lines 237-241) — Color tools
+
+Dependencies:
+* Phase 2 completion
+
+### Step 3.2: Implement Toolbar.ts
+
+Tool palette sidebar with tool buttons and active state highlighting.
+
+Implementation:
+- Vertical sidebar on the left side of the window
+- Tool buttons with icons (can use Unicode symbols or simple CSS icons initially)
+- Active tool highlighted with border/background
+- Tools: Brush (B), Eraser (E), Fill Bucket (G), Color Selection (W), Shape: Line (L), Shape: Rectangle (R), Shape: Ellipse (O)
+- Click to select tool, or use keyboard shortcut
+- Emit tool change events to PaintEngine
+
+Files:
+* `src/renderer/ui/Toolbar.ts` - Toolbar component
+
+Success criteria:
+* All P0 tools appear in the toolbar
+* Clicking a tool activates it
+* Active tool has visual highlight
+* PaintEngine receives tool change notifications
+
+Context references:
+* mac-paint-app-features-research.md (Lines 325-325) — Toolbar
+
+Dependencies:
+* Phase 2 completion
+
+### Step 3.3: Implement PropertyPanel.ts
+
+Contextual tool options panel with line size slider and tolerance/gradiance slider.
+
+Implementation:
+- Line size slider: `<input type="range" min="1" max="100" value="3">` — visible for all stroke tools
+- Tolerance slider: `<input type="range" min="0" max="255" value="32">` — visible for Fill Bucket tool
+- Gradiance slider: `<input type="range" min="0" max="255" value="32">` — visible for Color Selection tool
+- Shape mode buttons: Stroke / Fill / Stroke+Fill — visible for Shape tools
+- Numeric display showing current slider values
+- Panel updates when active tool changes (show relevant controls)
+
+Slider binding: when slider value changes, update the active tool's `lineWidth` property or tolerance parameter.
+
+Brush size preview cursor: Generate a circle cursor matching the current brush diameter.
+```typescript
+// Create cursor from canvas data URL
+const cursorCanvas = document.createElement('canvas');
+const size = lineWidth + 2;
+cursorCanvas.width = size;
+cursorCanvas.height = size;
+const cctx = cursorCanvas.getContext('2d')!;
+cctx.beginPath();
+cctx.arc(size/2, size/2, lineWidth/2, 0, Math.PI * 2);
+cctx.stroke();
+canvas.style.cursor = `url(${cursorCanvas.toDataURL()}) ${size/2} ${size/2}, crosshair`;
+```
+
+Files:
+* `src/renderer/ui/PropertyPanel.ts` - Property panel component
+
+Success criteria:
+* Line size slider adjusts stroke width in real-time
+* Tolerance slider is visible only for Fill Bucket
+* Gradiance slider is visible only for Color Selection
+* Shape mode toggle works for shape tools
+* Cursor preview matches current brush size
+
+Context references:
+* mac-paint-app-features-research.md (Lines 396-410) — Line size slider, brush size cursor
+* mac-paint-app-features-research.md (Lines 343-366) — Tolerance slider
+
+Dependencies:
+* Phase 2 completion
+
+### Step 3.4: Implement zoom/pan
+
+Canvas zoom and pan using CSS transforms and mouse/trackpad events.
+
+Implementation:
+- Zoom: transform `scale()` on the canvas container. Levels: 25%, 50%, 100%, 200%, 400%, 800%, 1600%
+- Mouse wheel zoom: `wheel` event with `deltaY` to zoom in/out, centered on cursor position
+- Trackpad pinch zoom: same `wheel` event with `ctrlKey` modifier (browsers report pinch as ctrl+wheel)
+- Pan: scroll events on the canvas container, or hold Space + drag
+- Fit to window: calculate scale to fit canvas within container
+- Keyboard: `Ctrl/⌘ + +` zoom in, `Ctrl/⌘ + -` zoom out, `Ctrl/⌘ + 0` fit to window
+- Update coordinate mapping in PaintEngine to account for zoom and offset
+
+Files:
+* `src/renderer/canvas/PaintEngine.ts` - Add zoom/pan methods and coordinate transforms
+
+Success criteria:
+* Mouse wheel zooms in/out centered on cursor
+* Trackpad pinch zoom works
+* Zoomed canvas can be panned
+* Coordinate mapping is accurate at all zoom levels (drawing appears at cursor position)
+
+Context references:
+* mac-paint-app-features-research.md (Lines 496-496) — Zoom/Pan via CSS transform
+
+Dependencies:
+* Step 2.1 (PaintEngine) completion
+
+### Step 3.5: Implement file I/O
+
+File open and save using Electron's native dialog APIs and Canvas blob export.
+
+Main process (IPC handlers):
+```typescript
+// In main.ts — register IPC handlers
+ipcMain.handle('dialog:openFile', async () => {
+  const result = await dialog.showOpenDialog({
+    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg'] }]
+  });
+  if (!result.canceled) {
+    return fs.readFileSync(result.filePaths[0]);  // Return Buffer
+  }
+});
+
+ipcMain.handle('dialog:saveFile', async (_, data: Buffer, defaultName: string) => {
+  const result = await dialog.showSaveDialog({
+    defaultPath: defaultName,
+    filters: [
+      { name: 'PNG', extensions: ['png'] },
+      { name: 'JPEG', extensions: ['jpg', 'jpeg'] }
+    ]
+  });
+  if (!result.canceled) {
+    fs.writeFileSync(result.filePath!, data);
+  }
+});
+```
+
+Preload script (contextBridge):
+```typescript
+contextBridge.exposeInMainWorld('electronAPI', {
+  openFile: () => ipcRenderer.invoke('dialog:openFile'),
+  saveFile: (data: Buffer, name: string) => ipcRenderer.invoke('dialog:saveFile', data, name),
+});
+```
+
+Renderer (save):
+```typescript
+canvas.toBlob((blob) => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    window.electronAPI.saveFile(Buffer.from(reader.result as ArrayBuffer), 'untitled.png');
+  };
+  reader.readAsArrayBuffer(blob!);
+}, 'image/png');
+```
+
+Renderer (open):
+```typescript
+const buffer = await window.electronAPI.openFile();
+if (buffer) {
+  const blob = new Blob([buffer]);
+  const img = new Image();
+  img.onload = () => { ctx.drawImage(img, 0, 0); };
+  img.src = URL.createObjectURL(blob);
+}
+```
+
+Files:
+* `src/main.ts` - Add IPC handlers for file dialogs
+* `src/preload.ts` - Expose file I/O APIs via contextBridge
+* `src/renderer/canvas/PaintEngine.ts` - Add save/open methods
+
+Success criteria:
+* Open dialog shows native macOS file picker
+* Opening a PNG/JPEG image displays it on canvas
+* Save dialog lets user choose location and format
+* Saved file is a valid PNG/JPEG that can be reopened
+
+Context references:
+* mac-paint-app-features-research.md (Lines 494-494) — Electron dialog + toBlob
+
+Dependencies:
+* Phase 1 completion (Electron shell with preload)
+
+### Step 3.6: Implement New Document action
+
+File > New / Ctrl+N action to create a fresh canvas with user-specified dimensions.
+
+Implementation:
+- Menu item: File > New (Ctrl/⌘+N)
+- Show dialog with: width input, height input, background color (white/transparent), preset sizes (e.g., 800×600, 1024×768, 1920×1080)
+- On confirm: clear canvas (or all layers), resize to specified dimensions, reset undo history
+- If unsaved changes exist, prompt "Save changes?" dialog before proceeding
+- Dialog can be a simple HTML modal overlay
+
+Files:
+* `src/renderer/ui/NewDocumentDialog.ts` - Create new document dialog
+* `src/renderer/canvas/PaintEngine.ts` - Add `newDocument(width, height, bgColor)` method
+* `src/main.ts` - Add File > New menu item with accelerator
+
+Success criteria:
+* Ctrl/⌘+N opens the new document dialog
+* Selecting dimensions creates a blank canvas of that size
+* Unsaved changes prompt before clearing
+* Undo history resets for the new document
+
+Context references:
+* mac-paint-app-features-research.md (Feature #56) — New Document with custom size
+
+Dependencies:
+* Step 3.5 (file I/O infrastructure) completion
+
+### Step 3.7: Implement keyboard shortcuts
+
+Keyboard shortcut system for tool switching and common operations.
+
+Implementation:
+```typescript
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+  const isMeta = e.metaKey || e.ctrlKey;
+
+  if (isMeta && e.key === 'z' && !e.shiftKey) { undo(); e.preventDefault(); }
+  if (isMeta && e.key === 'z' && e.shiftKey) { redo(); e.preventDefault(); }
+  if (isMeta && e.key === 'y') { redo(); e.preventDefault(); }
+  if (isMeta && e.key === 's') { save(); e.preventDefault(); }
+  if (isMeta && e.key === 'o') { open(); e.preventDefault(); }
+
+  // Single-key tool switching (only when not typing in input)
+  if (!e.metaKey && !e.ctrlKey && !e.altKey && !(e.target instanceof HTMLInputElement)) {
+    switch (e.key.toLowerCase()) {
+      case 'b': selectTool('brush'); break;
+      case 'e': selectTool('eraser'); break;
+      case 'g': selectTool('fill'); break;
+      case 'w': selectTool('colorSelection'); break;
+      case 'l': selectTool('line'); break;
+      case 'r': selectTool('rectangle'); break;
+      case 'o': selectTool('ellipse'); break;
+      case 'x': swapColors(); break;
+      case '[': decreaseBrushSize(); break;
+      case ']': increaseBrushSize(); break;
+    }
+  }
+});
+```
+
+Files:
+* `src/renderer/app.ts` - Keyboard event handling
+
+Success criteria:
+* Ctrl/⌘+Z undoes, Ctrl/⌘+Shift+Z redoes
+* Single-key shortcuts switch tools
+* X swaps foreground/background colors
+* [ and ] adjust brush size
+* Shortcuts don't fire when typing in input fields
+
+Context references:
+* mac-paint-app-features-research.md (Lines 497-497) — Keyboard shortcuts
+
+Dependencies:
+* Phase 2 completion (undo manager, tools)
+
+### Step 3.8: Implement app.css
+
+Base styling for the paint app layout, toolbar, property panel, and canvas container.
+
+Key styles:
+- CSS Grid layout: toolbar (left, 48px), canvas-container (center, flex), property-panel (right, 200px)
+- Toolbar: vertical button stack, 40×40px tool buttons, hover/active states
+- Canvas container: overflow scroll for panning, centered canvas element
+- Property panel: slider groups with labels and numeric displays
+- Color picker: overlapping foreground/background squares
+- Status bar: bottom, fixed height, flex row
+- Checkerboard background pattern for transparency indication (on canvas container behind the canvas)
+
+Files:
+* `src/renderer/styles/app.css` - Complete layout and component styles
+
+Success criteria:
+* Layout is responsive to window resizing
+* Toolbar tools are clickable with visual feedback
+* Sliders are usable and display current values
+* Canvas is scrollable when larger than the container
+
+Dependencies:
+* Phase 1 completion
+
+### Step 3.9: Validate Phase 3 — Complete P0 MVP
+
+Full end-to-end validation of the P0 MVP.
+
+Test workflow:
+1. Launch app (`npm start`)
+2. Select brush tool, adjust line size, draw strokes
+3. Switch to eraser, erase part of the drawing
+4. Draw shapes (line, rectangle, ellipse) with line size slider
+5. Use paint bucket to fill a region — test tolerance at 0, 32, 128
+6. Use color-tolerance selection — test gradiance slider
+7. Create a new document (Ctrl/⌘+N) with custom dimensions
+8. Undo several operations, then redo
+9. Save file as PNG, close and reopen it
+10. Test keyboard shortcuts (B, E, G, W, X, Ctrl+Z, Ctrl+S, Ctrl+N)
+
+Validation commands:
+* `npx tsc --noEmit` — TypeScript compilation
+* `npm start` — Full MVP testing
+
+## Implementation Phase 4: Selection, Text & Clipboard (P1)
+
+<!-- parallelizable: false -->
+
+### Step 4.1: Implement rectangular marquee selection
+
+Selection tool allowing drag-to-select, move, copy, and paste of rectangular regions.
+
+Implementation:
+- On `pointerdown`: record start point, begin marquee display
+- On `pointermove`: draw selection rectangle on overlay canvas (dashed border)
+- On `pointerup`: finalize selection rectangle
+- Selected area becomes movable: drag within selection to reposition
+- Copy: `getImageData()` from selection bounds, store as `ImageData`
+- Paste: `putImageData()` at cursor position
+- Delete: fill selection area with background color (or transparent)
+- Marching ants on selection boundary
+
+Files:
+* `src/renderer/tools/SelectionTool.ts` - Extend for rectangular marquee
+* `src/renderer/canvas/PaintEngine.ts` - Add selection state management
+
+Success criteria:
+* Drag creates a visible selection rectangle
+* Selected content can be moved by dragging
+* Copy/paste works within the canvas
+* Delete clears the selected area
+
+Context references:
+* mac-paint-app-features-research.md (Lines 221-223) — Selection tools
+
+Dependencies:
+* Phase 3 completion
+
+### Step 4.2: Implement eyedropper tool
+
+Click canvas to sample the pixel color and set as foreground color.
+
+Implementation:
+- On `pointerdown`: `getImageData(x, y, 1, 1)` → extract RGBA → set as foreground color
+- Show a preview of the sampled color near the cursor during `pointermove`
+- Hold Alt/Option key to temporarily activate eyedropper from any tool
+
+Files:
+* `src/renderer/tools/EyedropperTool.ts` - Create eyedropper tool
+* `src/renderer/ui/Toolbar.ts` - Add eyedropper button (I key)
+
+Success criteria:
+* Clicking canvas sets the foreground color to the pixel color
+* Alt+click works from any tool
+* Color picker UI updates immediately
+
+Context references:
+* mac-paint-app-features-research.md (Lines 237-237) — Eyedropper
+
+Dependencies:
+* Step 3.1 (ColorPicker) completion
+
+### Step 4.3: Implement text tool
+
+Text placement tool with font, size, and color controls.
+
+Implementation:
+- On click: show a text input overlay at click position
+- Text input: `contenteditable` div positioned over canvas, styled with selected font/size/color
+- On confirm (Enter or click outside): render text to canvas using `ctx.font`, `ctx.fillStyle`, `ctx.fillText()`
+- Property panel shows: font family dropdown (system fonts), font size input, bold/italic toggles
+- Anti-aliased text rendering via Canvas defaults
+
+Files:
+* `src/renderer/tools/TextTool.ts` - Text tool implementation
+* `src/renderer/ui/PropertyPanel.ts` - Add text-specific controls
+
+Success criteria:
+* Clicking canvas opens text input at that position
+* Text renders to canvas with selected font, size, and color
+* Text position matches where the user clicked
+* Font family and size controls work
+
+Context references:
+* mac-paint-app-features-research.md (Lines 245-251) — Text tools
+
+Dependencies:
+* Step 3.3 (PropertyPanel) completion
+
+### Step 4.4: Implement clipboard integration
+
+Copy/paste images to and from the system clipboard.
+
+Implementation:
+- Copy (Ctrl/⌘+C): if selection exists, `getImageData()` → convert to PNG blob → `navigator.clipboard.write()` with `ClipboardItem`
+- Cut (Ctrl/⌘+X): copy + fill selection with background color
+- Paste (Ctrl/⌘+V): `navigator.clipboard.read()` → find image/png → create ImageBitmap → `ctx.drawImage()` as floating selection
+- Paste as new image (Ctrl/⌘+Shift+V): create new canvas from clipboard content
+- Note: Electron requires `clipboard` module in main process for full system clipboard access; use IPC bridge
+
+Files:
+* `src/renderer/canvas/PaintEngine.ts` - Add clipboard methods
+* `src/preload.ts` - Add clipboard IPC bridge if needed
+* `src/main.ts` - Add clipboard IPC handlers if needed
+
+Success criteria:
+* Copy from canvas, paste into Preview — image transfers correctly
+* Copy from Preview, paste into canvas — image appears
+* Cut removes the selected area after copying
+
+Context references:
+* mac-paint-app-features-research.md (Lines 321-326) — Clipboard operations
+
+Dependencies:
+* Step 4.1 (Selection) completion
+
+### Step 4.5: Validate Phase 4
+
+Validation commands:
+* `npx tsc --noEmit` — TypeScript compilation
+* `npm start` — Manual testing of selection, text, clipboard
+
+## Implementation Phase 5: Canvas Management & Additional Shapes (P1)
+
+<!-- parallelizable: false -->
+
+### Step 5.1: Implement canvas resize/crop
+
+Dialogs for resizing the canvas and cropping to selection.
+
+Implementation:
+- Canvas resize: dialog with width/height inputs, anchor position (9-point grid), background color fill for new areas
+- Crop to selection: resize canvas to selected area bounds
+- Use `getImageData()` → create new canvas with new dimensions → `putImageData()` with offset
+
+Files:
+* `src/renderer/canvas/PaintEngine.ts` - Add resize/crop methods
+* `src/renderer/ui/ResizeDialog.ts` - Create resize dialog component
+
+Success criteria:
+* Resize dialog opens with current dimensions
+* Canvas resizes while preserving existing content
+* Crop trims canvas to selection bounds
+
+Context references:
+* mac-paint-app-features-research.md (Lines 262-263) — Canvas resize/crop
+
+Dependencies:
+* Phase 3 completion
+
+### Step 5.2: Implement export formats
+
+Export to PNG, JPEG, and WebP using `canvas.toBlob()`.
+
+Implementation:
+- PNG: `canvas.toBlob(callback, 'image/png')` — default, lossless
+- JPEG: `canvas.toBlob(callback, 'image/jpeg', quality)` — quality slider 0–100
+- WebP: `canvas.toBlob(callback, 'image/webp', quality)` — quality slider 0–100
+- Save dialog filter shows all supported formats
+- Detect format from file extension in save path
+
+Files:
+* `src/main.ts` - Update save dialog filters
+* `src/renderer/canvas/PaintEngine.ts` - Add format-specific export
+
+Success criteria:
+* PNG export produces valid PNG files
+* JPEG export uses quality parameter
+* WebP export works on supported platforms
+* Format is determined by file extension
+
+Context references:
+* mac-paint-app-features-research.md (Lines 518-518) — Export formats
+
+Dependencies:
+* Step 3.5 (file I/O) completion
+
+### Step 5.3: Implement drag-and-drop
+
+Open images by dragging them into the app window.
+
+Implementation:
+```typescript
+canvas.addEventListener('dragover', (e) => { e.preventDefault(); });
+canvas.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const file = e.dataTransfer?.files[0];
+  if (file?.type.startsWith('image/')) {
+    const img = new Image();
+    img.onload = () => { ctx.drawImage(img, 0, 0); };
+    img.src = URL.createObjectURL(file);
+  }
+});
+```
+
+Files:
+* `src/renderer/canvas/PaintEngine.ts` - Add drag-and-drop handlers
+
+Success criteria:
+* Dragging an image file from Finder into the window opens it
+* Non-image files are ignored
+* Image displays on canvas at correct size
+
+Context references:
+* mac-paint-app-features-research.md (Lines 519-519) — Drag and drop
+
+Dependencies:
+* Phase 1 completion
+
+### Step 5.4: Implement additional shapes
+
+Rounded rectangle and polygon tools with line size slider.
+
+Implementation:
+- Rounded rectangle: `ctx.roundRect(x, y, w, h, radius)` (Canvas API) with adjustable corner radius slider
+- Polygon: click to place vertices, double-click or close path to finish. `ctx.moveTo()` / `ctx.lineTo()` for edges.
+- Both support stroke/fill toggle and line size slider
+
+Files:
+* `src/renderer/tools/ShapeTool.ts` - Add rounded rectangle and polygon sub-tools
+
+Success criteria:
+* Rounded rectangle draws with adjustable corner radius
+* Polygon allows multi-vertex shapes
+* Both respect line size slider
+* Both support stroke/fill toggle
+
+Context references:
+* mac-paint-app-features-research.md (Lines 524-524) — Rounded rectangle, polygon
+
+Dependencies:
+* Step 2.5 (ShapeTool) completion
+
+### Step 5.5: Implement curve/Bézier tool
+
+Quadratic and cubic curve drawing with control points.
+
+Implementation:
+- Click to set start point, click to set end point, drag to adjust control point(s)
+- Quadratic: one control point (3 clicks/drags)
+- Cubic: two control points (4 clicks/drags)
+- Visual control point handles during editing
+- Commit to canvas on Enter or double-click
+- Line size slider applies to curve stroke
+
+Files:
+* `src/renderer/tools/CurveTool.ts` - Create curve tool
+
+Success criteria:
+* Curves draw smoothly with adjustable control points
+* Control point handles are visible and draggable
+* Line size slider affects curve stroke width
+
+Context references:
+* mac-paint-app-features-research.md (Lines 525-525) — Curve/Bézier tool
+
+Dependencies:
+* Step 2.2 (Tool interface) completion
+
+### Step 5.6: Validate Phase 5
+
+Validation commands:
+* `npx tsc --noEmit` — TypeScript compilation
+* `npm start` — Manual testing of canvas management and shapes
+
+## Implementation Phase 6: Layers & Power Features (P2)
+
+<!-- parallelizable: false -->
+
+### Step 6.1: Implement layer system
+
+Multi-layer architecture using stacked `<canvas>` elements with a layer panel UI.
+
+Architecture:
+- Each layer is a `<canvas>` element with `position: absolute` in the canvas container
+- Layers stacked via `z-index`
+- Layer panel UI on the right side: list of layers with thumbnails, visibility toggle (eye icon), name, reorder via drag
+- Add layer: create new `<canvas>`, append to stack
+- Remove layer: remove `<canvas>` from DOM
+- Active layer: highlighted in panel, receives all drawing operations
+- Flatten: `drawImage()` all layers onto a single canvas in order
+- Merge down: `drawImage()` active layer onto layer below
+
+Adapting existing tools:
+- PaintEngine must track active layer and route all drawing to that layer's context
+- UndoManager stores per-layer snapshots or composite snapshots
+
+Files:
+* `src/renderer/canvas/LayerManager.ts` - Create layer management
+* `src/renderer/ui/LayerPanel.ts` - Create layer panel UI
+* `src/renderer/canvas/PaintEngine.ts` - Modify to route drawing to active layer
+* `src/renderer/canvas/UndoManager.ts` - Adapt for multi-layer undo
+
+Discrepancy references:
+* DD-01: Phase structure expanded for finer granularity
+
+Success criteria:
+* Multiple layers can be created and drawn on independently
+* Layer visibility toggle hides/shows layers
+* Layer reorder changes compositing order
+* Flatten merges all layers correctly
+* Undo/redo works correctly with layers
+
+Context references:
+* mac-paint-app-features-research.md (Lines 272-282) — Layer features
+* html5-canvas-patterns-research.md — Layer implementation patterns
+
+Dependencies:
+* Phase 3 completion
+
+### Step 6.2: Implement lasso selection
+
+Freeform path-based selection tool.
+
+Implementation:
+- On `pointerdown`: begin freeform path
+- On `pointermove`: draw path on overlay, collect points
+- On `pointerup`: close path, create selection mask from path interior
+- Use `ctx.isPointInPath()` or manual scanline fill to determine which pixels are inside
+- Marching ants on boundary
+
+Files:
+* `src/renderer/tools/LassoTool.ts` - Create lasso selection tool
+
+Success criteria:
+* Freeform path closes and creates a selection
+* Selection mask correctly identifies interior pixels
+* Marching ants display on boundary
+
+Context references:
+* mac-paint-app-features-research.md (Lines 224-224) — Lasso select
+
+Dependencies:
+* Step 4.1 (Selection infrastructure) completion
+
+### Step 6.3: Implement gradient tool
+
+Linear and radial gradient fills.
+
+Implementation:
+- Drag to define gradient direction and extent
+- Linear: `ctx.createLinearGradient(x0, y0, x1, y1)` from foreground to background color
+- Radial: `ctx.createRadialGradient(x0, y0, r0, x1, y1, r1)` from foreground to background
+- Mode toggle in property panel: linear / radial
+- If selection exists, fill only within selection bounds
+
+Files:
+* `src/renderer/tools/GradientTool.ts` - Create gradient tool
+
+Success criteria:
+* Linear gradients fill canvas from drag start to end
+* Radial gradients create circular gradient from center
+* Gradients use foreground and background colors
+
+Context references:
+* mac-paint-app-features-research.md (Lines 240-240) — Gradient fill
+
+Dependencies:
+* Step 3.1 (ColorPicker foreground/background) completion
+
+### Step 6.4: Implement brush presets
+
+Brush opacity, hardness, and preset library.
+
+Implementation:
+- Opacity: `ctx.globalAlpha` slider (0–100%)
+- Hardness: generate brush tip with varying edge softness (gaussian blur on stamp)
+- Presets: predefined brush configurations (pencil, marker, airbrush) saved as name + settings
+- Preset picker in property panel
+
+Files:
+* `src/renderer/tools/BrushTool.ts` - Add opacity, hardness, presets
+* `src/renderer/ui/PropertyPanel.ts` - Add brush preset picker
+
+Success criteria:
+* Opacity slider affects stroke transparency
+* Hardness slider affects edge softness
+* Presets switch between saved brush configurations
+
+Context references:
+* mac-paint-app-features-research.md (Lines 539-539) — Brush presets
+
+Dependencies:
+* Step 2.3 (BrushTool) completion
+
+### Step 6.5: Implement image filters
+
+Pixel manipulation filters: blur, sharpen, brightness/contrast, invert.
+
+Implementation — all operate on `getImageData()`/`putImageData()`:
+- **Invert**: `pixel[i] = 255 - pixel[i]` for R, G, B
+- **Brightness**: add value to each RGB channel, clamp to 0–255
+- **Contrast**: `factor = (259 * (contrast + 255)) / (255 * (259 - contrast))`, apply to each channel
+- **Gaussian blur**: 3×3 or 5×5 kernel convolution
+- **Sharpen**: 3×3 sharpening kernel: `[0,-1,0/-1,5,-1/0,-1,0]`
+- Apply to active layer (or selection if exists)
+
+Files:
+* `src/renderer/canvas/Filters.ts` - Create filter implementations
+* Add menu items or UI for filter access
+
+Success criteria:
+* Invert reverses all colors visible
+* Brightness slider adjusts light levels
+* Blur softens the image
+* Sharpen enhances edges
+* Filters apply only to selection if one exists
+
+Context references:
+* mac-paint-app-features-research.md (Lines 283-299) — Filters
+
+Dependencies:
+* Phase 2 completion (pixel manipulation infrastructure)
+
+### Step 6.6: Implement transform tools
+
+Rotate, flip, and scale operations.
+
+Implementation:
+- Rotate 90°/180°/270°: create rotated canvas via `ctx.translate()` + `ctx.rotate()` + `drawImage()`
+- Flip horizontal: `ctx.scale(-1, 1)` + `drawImage()`
+- Flip vertical: `ctx.scale(1, -1)` + `drawImage()`
+- Scale: resize dialog with width/height, maintain aspect ratio option; `drawImage()` with new dimensions
+- If selection exists, transform only the selected region (extract, transform, paste back)
+
+Files:
+* `src/renderer/canvas/Transform.ts` - Create transform operations
+
+Success criteria:
+* Rotate 90° works correctly
+* Flip horizontal/vertical mirror the image
+* Scale resizes with quality preservation
+* Transforms work on selection when one exists
+
+Context references:
+* mac-paint-app-features-research.md (Lines 253-261) — Transform tools
+
+Dependencies:
+* Phase 3 completion
+
+### Step 6.7: Implement transparency support
+
+Alpha channel editing with checkerboard background display.
+
+Implementation:
+- Checkerboard pattern: CSS background on canvas container using repeating-linear-gradient or a tiled pattern
+- New empty canvas starts transparent (not white) — show checkerboard through transparent areas
+- Eraser removes to transparency (already implemented via `destination-out`)
+- Alpha channel visible in all operations
+
+Files:
+* `src/renderer/styles/app.css` - Add checkerboard pattern
+* `src/renderer/canvas/PaintEngine.ts` - Ensure canvas starts transparent
+
+Success criteria:
+* Empty canvas shows checkerboard pattern
+* Erased areas show checkerboard through
+* Transparency preserves when saving PNG
+
+Dependencies:
+* Phase 1 completion
+
+### Step 6.8: Implement dark mode
+
+Dark UI theme following macOS system preference with manual toggle.
+
+Implementation:
+- CSS `@media (prefers-color-scheme: dark)` for automatic system detection
+- CSS variables for theme colors: `--bg-primary`, `--bg-secondary`, `--text-primary`, `--border-color`, etc.
+- Manual toggle button in the UI
+- Dark theme: dark gray backgrounds, light text, subtle borders
+- Light theme: standard light backgrounds
+
+Files:
+* `src/renderer/styles/app.css` - Add dark mode CSS variables and media query
+
+Success criteria:
+* App follows macOS system appearance setting
+* Manual toggle overrides system setting
+* All UI elements are readable in both themes
+
+Context references:
+* mac-paint-app-features-research.md (Lines 543-543) — Dark mode
+
+Dependencies:
+* Step 3.7 (app.css base) completion
+
+### Step 6.9: Implement grid overlay and status bar
+
+Pixel grid at high zoom and status bar with cursor information.
+
+Implementation:
+- Grid overlay: at zoom ≥ 800%, draw 1px grid lines on a separate overlay canvas (grid lines align to pixel boundaries)
+- Grid toggle in View menu or keyboard shortcut
+- Status bar (bottom of window): cursor position (X, Y), zoom percentage, canvas dimensions (W × H)
+- Update on every `pointermove`
+
+Files:
+* `src/renderer/canvas/PaintEngine.ts` - Add grid overlay rendering
+* `src/renderer/ui/StatusBar.ts` - Create status bar component
+
+Success criteria:
+* Grid appears at high zoom levels
+* Grid lines align perfectly with pixel boundaries
+* Status bar shows accurate cursor position and zoom
+
+Context references:
+* mac-paint-app-features-research.md (Lines 327-330) — Grid and status bar
+
+Dependencies:
+* Step 3.4 (zoom) completion
+
+### Step 6.10: Validate Phase 6
+
+Validation commands:
+* `npx tsc --noEmit` — TypeScript compilation
+* `npm start` — Manual testing of layers, filters, transforms
+
+## Implementation Phase 7: Advanced Features (P3)
+
+<!-- parallelizable: false -->
+
+### Step 7.1: Implement blend modes
+
+Per-layer blend modes using `globalCompositeOperation`.
+
+Implementation:
+- Layer blend mode selector in layer panel: Normal, Multiply, Screen, Overlay, Darken, Lighten
+- Map to Canvas `globalCompositeOperation` values
+- Apply during layer compositing: when flattening or rendering the composite view
+
+Files:
+* `src/renderer/canvas/LayerManager.ts` - Add blend mode property to layers
+* `src/renderer/ui/LayerPanel.ts` - Add blend mode dropdown
+
+Success criteria:
+* Blend mode changes are visible immediately
+* Multiply darkens, Screen lightens as expected
+
+Context references:
+* mac-paint-app-features-research.md (Lines 555-555) — Blend modes
+
+Dependencies:
+* Step 6.1 (layers) completion
+
+### Step 7.2: Implement layer opacity
+
+Per-layer transparency slider.
+
+Implementation:
+- `globalAlpha` set to layer opacity value before `drawImage()` during compositing
+- Opacity slider (0–100%) in layer panel for each layer
+- Layer thumbnail reflects opacity
+
+Files:
+* `src/renderer/canvas/LayerManager.ts` - Add opacity property
+* `src/renderer/ui/LayerPanel.ts` - Add opacity slider
+
+Success criteria:
+* Layer opacity slider changes transparency
+* Thumbnail preview reflects opacity
+
+Context references:
+* mac-paint-app-features-research.md (Lines 556-556) — Layer opacity
+
+Dependencies:
+* Step 6.1 (layers) completion
+
+### Step 7.3: Implement pressure sensitivity
+
+Variable brush width from `PointerEvent.pressure` for stylus and trackpad.
+
+Implementation:
+- Read `e.pressure` from PointerEvent (0.0–1.0)
+- Map pressure to line width: `width = minWidth + pressure * (maxWidth - minWidth)`
+- Only applicable when `e.pointerType === 'pen'` (stylus) or trackpad force events
+- Use `perfect-freehand` library or manual pressure-to-width interpolation
+- Render variable-width stroke by drawing circles at each point with radius = pressure-mapped width
+
+Files:
+* `src/renderer/tools/BrushTool.ts` - Add pressure support
+* `src/renderer/tools/EraserTool.ts` - Add pressure support
+
+Success criteria:
+* Pressing harder with stylus produces thicker strokes
+* Light pressure produces thin strokes
+* Mouse input (pressure always 0.5) works unchanged
+
+Context references:
+* mac-paint-app-features-research.md (Lines 557-557) — Pressure sensitivity
+
+Dependencies:
+* Step 2.3 (BrushTool) completion
+
+### Step 7.4: Implement custom brush engine
+
+User-defined brush textures, spacing, and jitter.
+
+Implementation:
+- Brush stamp: draw brush tip onto a small canvas, stamp along stroke path
+- Spacing: control distance between stamps (% of brush diameter)
+- Scatter/jitter: random offset perpendicular to stroke direction
+- Rotation: stamp rotation along stroke path or random
+- Texture: load image as brush tip
+- Preset save/load for custom brushes
+
+Files:
+* `src/renderer/tools/BrushEngine.ts` - Create custom brush engine
+* `src/renderer/ui/BrushPresetPanel.ts` - Brush preset management UI
+
+Success criteria:
+* Custom brush tips stamp correctly along stroke path
+* Spacing parameter controls stamp density
+* Jitter adds natural randomness
+* Presets save and restore correctly
+
+Context references:
+* mac-paint-app-features-research.md (Lines 558-558) — Custom brush engine
+
+Dependencies:
+* Step 6.4 (brush presets) completion
+
+### Step 7.5: Implement curves/levels
+
+Color correction with histogram display.
+
+Implementation:
+- Levels: input range (black point, white point), output range, per-channel
+- Curves: 256-entry lookup table editable via point-and-drag curve UI
+- Histogram: calculate and display pixel value distribution for R, G, B channels
+- Apply via pixel-by-pixel mapping through the lookup table
+
+Files:
+* `src/renderer/canvas/Adjustments.ts` - Create levels/curves algorithms
+* `src/renderer/ui/CurvesDialog.ts` - Create curves UI with draggable points
+
+Success criteria:
+* Levels adjust black/white points correctly
+* Curves UI is draggable and updates preview
+* Histogram displays accurate distribution
+
+Context references:
+* mac-paint-app-features-research.md (Lines 290-291) — Levels and Curves
+
+Dependencies:
+* Step 6.5 (filters infrastructure) completion
+
+### Step 7.6: Implement symmetry drawing
+
+Multi-axis mirror drawing mode.
+
+Implementation:
+- Symmetry axes: 1 (horizontal/vertical mirror), 2–12 rotational axes
+- Duplicate stroke points by reflecting across symmetry axes
+- Rotational symmetry: rotate points by `360/N` degrees for N axes
+- Visual overlay showing symmetry axis/axes
+- Toggle in tool options
+
+Files:
+* `src/renderer/tools/BrushTool.ts` - Add symmetry mode
+* `src/renderer/ui/PropertyPanel.ts` - Add symmetry controls
+
+Success criteria:
+* Horizontal mirror duplicates strokes across vertical center line
+* Rotational symmetry (e.g., 6-axis) creates mandala-like patterns
+* Symmetry axes are visually indicated
+
+Context references:
+* mac-paint-app-features-research.md (Lines 562-562) — Symmetry drawing
+
+Dependencies:
+* Step 2.3 (BrushTool) completion
+
+### Step 7.7: Validate Phase 7
+
+Validation commands:
+* `npx tsc --noEmit` — TypeScript compilation
+* `npm start` — Manual testing of advanced features
+
+## Implementation Phase 8: Final Validation
+
+<!-- parallelizable: false -->
+
+### Step 8.1: Run full project validation
+
+Execute all validation commands for the project:
+* `npx tsc --noEmit` — TypeScript compilation check
+* `npm run lint` — Linting (if configured)
+* `npm run make` — Build distributables for current platform
+
+### Step 8.2: Fix minor validation issues
+
+Iterate on TypeScript errors, build warnings, and any runtime issues. Apply fixes directly when corrections are straightforward and isolated.
+
+### Step 8.3: End-to-end functional testing
+
+Comprehensive manual testing:
+* Complete workflow: new → draw → fill → select → text → save → reopen
+* Each tool with line size slider at min (1), mid (50), max (100)
+* Paint bucket tolerance at 0, 32, 128, 255
+* Color-tolerance selection gradiance at 0, 32, 128, 255
+* Undo/redo chain of 50+ operations
+* Layers: create 5 layers, draw on each, reorder, flatten
+* File I/O: save PNG, JPEG, WebP; reopen each
+
+### Step 8.4: Report blocking issues
+
+When validation failures require changes beyond minor fixes:
+* Document the issues and affected files
+* Provide the user with next steps
+* Recommend additional research and planning rather than inline fixes
+* Avoid large-scale refactoring within this phase
+
+## Dependencies
+
+* Node.js 18+ (20+ recommended)
+* Electron Forge CLI (`@electron-forge/cli`)
+* Vite + TypeScript (via Electron Forge template)
+
+## Success Criteria
+
+* All P0 tools function correctly with line size slider
+* Paint bucket fills with configurable tolerance
+* Color-tolerance selection works with gradiance slider and marching ants
+* Undo/redo supports 50+ levels
+* File save/open works for PNG/JPEG
+* Layers are functional with add/remove/reorder/visibility
+* `npm run make` produces a runnable app bundle

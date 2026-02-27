@@ -1,0 +1,139 @@
+<!-- markdownlint-disable-file -->
+# Planning Log: Mac Paint App
+
+## Discrepancy Log
+
+Gaps and differences identified between research findings and the implementation plan.
+
+### Unaddressed Research Items
+
+* DR-01: Native format `.paintdoc` bundle preserving layers (Feature #107)
+  * Source: mac-paint-app-features-research.md (Lines 307-307)
+  * Reason: Deferred to post-Phase 6 — requires layer system to be in place first; standard formats (PNG/JPEG) sufficient for initial delivery
+  * Impact: low
+
+* DR-02: HEIF/HEIC, TIFF, PSD, SVG, RAW, OpenEXR, ICO/ICNS format support (Features #99–106)
+  * Source: mac-paint-app-features-research.md (Lines 298-306)
+  * Reason: Beyond MVP scope; PNG/JPEG/WebP cover 95%+ of user needs; specialized formats require additional libraries
+  * Impact: low
+
+* DR-03: Animation support with frame timeline and GIF/APNG export (Feature #39 in P3)
+  * Source: mac-paint-app-features-research.md (Lines 567-567)
+  * Reason: Very high effort, niche use case for a paint app; better suited as a separate feature investigation
+  * Impact: low
+
+* DR-04: Pen/Bézier path tool with SVG-style path editing (P3)
+  * Source: mac-paint-app-features-research.md (Lines 565-565)
+  * Reason: High effort; curve tool in Phase 5 covers basic curve needs; full path editing is a vector feature
+  * Impact: low
+
+* DR-05: Non-destructive filter layers (P3 Feature #35)
+  * Source: mac-paint-app-features-research.md (Lines 563-563)
+  * Reason: High architectural complexity — requires filter layer abstraction on top of layer system; destructive filters sufficient initially
+  * Impact: medium
+
+* DR-06: Perceptual weighted color distance for color-tolerance selection
+  * Source: mac-paint-app-features-research.md (Lines 377-380)
+  * Reason: Euclidean RGB distance is standard and sufficient; perceptual weighting noted as optional enhancement in research
+  * Impact: low
+
+* DR-07: Full Color Management (ICC profiles) and HDR color support (Features #37–38)
+  * Source: mac-paint-app-features-research.md (Lines 243-244)
+  * Reason: Professional-grade features beyond target scope; standard sRGB sufficient
+  * Impact: low
+
+* DR-08: Feather selection, global selection mask, add/subtract from selection (Features #26, #25, #29)
+  * Source: mac-paint-app-features-research.md (Lines 227-231)
+  * Reason: Advanced selection features deferred; basic rectangular and color-tolerance selection cover core needs
+  * Impact: low
+
+* DR-09: Batch Processing not addressed (P3 Feature #38)
+  * Source: mac-paint-app-features-research.md (Section 4, P3 #38)
+  * Reason: Listed in research P3 ranking but absent from all plan phases and not previously tracked as a gap
+  * Impact: low
+
+* DR-10: New Document dialog/action not explicitly planned
+  * Source: mac-paint-app-features-research.md (Feature #56 — New Document, custom size, background color)
+  * Reason: App scaffold creates a default canvas on launch, but no File > New or Ctrl/⌘+N action is planned for creating a fresh canvas with user-specified dimensions after work has begun; end-to-end test (Step 8.3) expects a "new" action that has no implementing step
+  * Impact: minor
+
+### Plan Deviations from Research
+
+* DD-01: Phase structure expanded from 4 research phases to 8 implementation phases
+  * Research recommends: 4 phases (MVP, Expected, Powerful, Advanced)
+  * Plan implements: 8 phases (Scaffold, Core Engine, UI/IO, Selection/Text, Canvas/Shapes, Layers/Power, Advanced, Validation)
+  * Rationale: Finer-grained phases improve implementability — scaffold must complete before engine, engine before UI; P1 features split for parallelization; final validation is a separate phase
+
+* DD-02: Phases 4 and 5 (P1 features) corrected to sequential
+  * Research recommends: Sequential P1 delivery
+  * Plan implements: Selection/Text (Phase 4) and Canvas/Shapes (Phase 5) as sequential phases
+  * Rationale: Both phases modify `PaintEngine.ts` (DD-03 finding) — Phase 4 adds selection state and clipboard methods, Phase 5 adds resize/export/drag-drop methods; sequential execution avoids merge conflicts
+
+* DD-03: Phases 4 and 5 share `PaintEngine.ts` modifications — resolved by making both sequential
+  * Research recommends: N/A (implementation concern, not a research recommendation)
+  * Plan implements: Both phases now sequential (`parallelizable: false`) to avoid conflicting edits to `PaintEngine.ts`
+  * Rationale: Simpler than extracting a `CanvasManager.ts` module; parallelization benefit was marginal for 2 phases
+
+## Implementation Paths Considered
+
+### Selected: Electron + HTML5 Canvas 2D + TypeScript
+
+* Approach: Electron Forge + Vite scaffold with TypeScript, HTML5 Canvas 2D API for drawing engine, raw `Uint8ClampedArray` for pixel manipulation, HTML/CSS for UI widgets
+* Rationale: Best pixel manipulation performance (~15ms flood fill), trivial UI (sliders/pickers are single HTML elements), cross-platform, proven at scale (VS Code, Figma), fully local
+* Evidence: mac-paint-app-features-research.md (Lines 89-115), cross-platform-framework-research.md
+
+### IP-01: Tauri + HTML5 Canvas (Rust backend)
+
+* Approach: Same Canvas drawing engine but with Tauri instead of Electron — Rust backend, system webview
+* Trade-offs: ~600KB bundle vs ~150MB (Electron), but requires Rust toolchain (~1GB install + compile times), potential webview inconsistencies across platforms, smaller ecosystem
+* Rejection rationale: Bundle size doesn't matter for local-only use; Rust toolchain complexity adds friction; same Canvas capabilities means no drawing performance advantage
+
+### IP-02: Python + PyQt6/PySide6
+
+* Approach: Qt widget toolkit via Python bindings, QPainter for drawing
+* Trade-offs: Excellent widget toolkit with native look, but Python pixel operations 10–100x slower without numpy; Qt learning curve
+* Rejection rationale: Core requirement is pixel manipulation (flood fill, color-tolerance selection) — Python is fundamentally slower for these operations
+
+### IP-03: Python + Tkinter
+
+* Approach: Built-in Python GUI toolkit
+* Trade-offs: Zero-install, simplest setup
+* Rejection rationale: **Eliminated** — Tkinter Canvas has no pixel-level access; flood fill and color-tolerance selection are infeasible
+
+### IP-04: Canvas framework (Konva.js / Fabric.js) + Electron
+
+* Approach: Object-oriented canvas framework on top of Electron
+* Trade-offs: Richer scene graph, easier object manipulation, but adds abstraction layer over raw Canvas API
+* Rejection rationale: Pixel manipulation (flood fill, color selection) still requires raw Canvas API underneath; framework adds overhead without benefit for bitmap paint tool
+
+## Suggested Follow-On Work
+
+Items identified during planning that fall outside current scope.
+
+* WI-01: Native `.paintdoc` format — Custom file format preserving layers, selections, and history (medium priority)
+  * Source: Research feature #107, DR-01
+  * Dependency: Phase 6 (layers) must complete first
+
+* WI-02: Stylus / pressure sensitivity deep dive — PointerEvent API `pressure`, `tiltX`, `tiltY` for Wacom/Apple Pencil (medium priority)
+  * Source: Research Potential Next Research section
+  * Dependency: Phase 2 (drawing engine) must be in place
+
+* WI-03: WebGL canvas rendering — GPU-accelerated filters for large canvas performance (low priority)
+  * Source: Research Potential Next Research section
+  * Dependency: Phase 6 (filters) should be implemented first to identify performance bottlenecks
+
+* WI-04: Plugin/extension system — Third-party effect and tool plugins (low priority)
+  * Source: Research feature #93
+  * Dependency: Stable API from Phase 6
+
+* WI-05: Animation support — Frame timeline, GIF/APNG export (low priority)
+  * Source: Research P3 features, DR-03
+  * Dependency: Phase 6 (layers) for frame management
+
+* WI-06: Additional file format support — HEIF/HEIC, TIFF, PSD import, SVG import (low priority)
+  * Source: Research features #99–106, DR-02
+  * Dependency: Phase 3 (file I/O) as base
+
+* WI-07: Clipboard API deep integration — Copy/paste canvas selections to/from system clipboard with transparency (medium priority)
+  * Source: Research Potential Next Research section
+  * Dependency: Phase 4 (clipboard basics)
