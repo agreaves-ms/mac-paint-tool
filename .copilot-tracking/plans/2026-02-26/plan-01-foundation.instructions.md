@@ -48,26 +48,26 @@ Bootstrap Electron + Vite + TypeScript project, configure the project scaffold w
 
 ## Implementation Checklist
 
-### [ ] Implementation Phase 1: Project Scaffold & Electron Shell
+### [x] Implementation Phase 1: Project Scaffold & Electron Shell
 
 <!-- parallelizable: false -->
 
-* [ ] Step 1.1: Bootstrap Electron + Vite + TypeScript project using `npm init electron-app@latest`
+* [x] Step 1.1: Bootstrap Electron + Vite + TypeScript project using `npm init electron-app@latest`
   * Details: .copilot-tracking/details/2026-02-26/plan-01-foundation-details.md (Lines 12-45)
-* [ ] Step 1.2: Configure project structure — `src/main.ts`, `src/preload.ts`, `src/renderer/`
+* [x] Step 1.2: Configure project structure — `src/main.ts`, `src/preload.ts`, `src/renderer/`
   * Details: .copilot-tracking/details/2026-02-26/plan-01-foundation-details.md (Lines 47-96)
-* [ ] Step 1.3: Set up main HTML layout with canvas container, toolbar sidebar, and property panel
+* [x] Step 1.3: Set up main HTML layout with canvas container, toolbar sidebar, and property panel
   * Details: .copilot-tracking/details/2026-02-26/plan-01-foundation-details.md (Lines 98-131)
-* [ ] Step 1.4: Validate scaffold — `npm start` launches Electron window with canvas visible
+* [x] Step 1.4: Validate scaffold — `npm start` launches Electron window with canvas visible
   * Details: .copilot-tracking/details/2026-02-26/plan-01-foundation-details.md (Lines 133-148)
 
-### [ ] Implementation Phase 2: Core Canvas Engine
+### [x] Implementation Phase 2: Core Canvas Engine
 
 <!-- parallelizable: false -->
 
-* [ ] Step 2.1: Implement `PaintEngine.ts` — canvas initialization, coordinate mapping, rendering loop
+* [x] Step 2.1: Implement `PaintEngine.ts` — canvas initialization, coordinate mapping, rendering loop
   * Details: .copilot-tracking/details/2026-02-26/plan-01-foundation-details.md (Lines 154-250)
-* [ ] Step 2.2: Implement tool abstraction (`Tool` interface) with `lineWidth` property from shared slider
+* [x] Step 2.2: Implement tool abstraction (`Tool` interface) with `lineWidth` property from shared slider
   * Details: .copilot-tracking/details/2026-02-26/plan-01-foundation-details.md (Lines 252-310)
 
 ## Planning Log
