@@ -50,6 +50,12 @@ const createWindow = () => {
           click: () => mainWindow.webContents.send('menu-save-as'),
         },
         { type: 'separator' },
+        {
+          label: 'Export as SVG…',
+          accelerator: 'CmdOrCtrl+Shift+E',
+          click: () => mainWindow.webContents.send('menu-export-svg'),
+        },
+        { type: 'separator' },
         { role: 'quit' },
       ],
     },
@@ -160,6 +166,21 @@ const createWindow = () => {
   ipcMain.handle('file:writeImage', async (_event, filePath: string, dataUrl: string) => {
     const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
     fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+    return filePath;
+  });
+
+  ipcMain.handle('dialog:getSvgSavePath', async () => {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      filters: [
+        { name: 'SVG Image', extensions: ['svg'] },
+      ],
+    });
+    if (result.canceled || !result.filePath) return null;
+    return result.filePath;
+  });
+
+  ipcMain.handle('file:writeSvg', async (_event, filePath: string, svgContent: string) => {
+    fs.writeFileSync(filePath, svgContent, 'utf-8');
     return filePath;
   });
 

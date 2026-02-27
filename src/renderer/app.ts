@@ -275,6 +275,7 @@ window.electronAPI?.onMenuRedo(() => redo());
 window.electronAPI?.onMenuCopy(() => engine.copySelection());
 window.electronAPI?.onMenuCut(() => engine.cutSelection());
 window.electronAPI?.onMenuPaste(() => engine.pasteFromClipboard());
+window.electronAPI?.onMenuExportSvg(() => engine.exportAsSvg());
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e: KeyboardEvent) => {

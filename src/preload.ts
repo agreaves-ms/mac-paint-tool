@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveFile: (dataUrl: string) => ipcRenderer.invoke('dialog:save', dataUrl),
   getSavePath: () => ipcRenderer.invoke('dialog:getSavePath'),
   writeImageFile: (filePath: string, dataUrl: string) => ipcRenderer.invoke('file:writeImage', filePath, dataUrl),
+  getSvgSavePath: () => ipcRenderer.invoke('dialog:getSvgSavePath'),
+  writeSvgFile: (filePath: string, svgContent: string) => ipcRenderer.invoke('file:writeSvg', filePath, svgContent),
   writeClipboardImage: (dataUrl: string) => ipcRenderer.invoke('clipboard:write-image', dataUrl),
   readClipboardImage: () => ipcRenderer.invoke('clipboard:read-image'),
   onMenuNew: (callback: () => void) => {
@@ -51,5 +53,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = () => callback();
     ipcRenderer.on('menu-paste', handler);
     return () => { ipcRenderer.removeListener('menu-paste', handler); };
+  },
+  onMenuExportSvg: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-export-svg', handler);
+    return () => { ipcRenderer.removeListener('menu-export-svg', handler); };
   },
 });

@@ -387,6 +387,45 @@ export class PaintEngine {
     });
   }
 
+  async exportAsSvg(): Promise<void> {
+    const filePath = await window.electronAPI?.getSvgSavePath();
+    if (!filePath) return;
+
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    const layerManager = this.getLayerManager();
+    let svgContent: string;
+
+    if (layerManager) {
+      const layers = layerManager.getLayers();
+      let layerElements = '';
+      for (const layer of layers) {
+        if (!layer.visible) continue;
+        const dataUrl = layer.canvas.toDataURL('image/png');
+        const escapedName = this.escapeXml(layer.name);
+        const blendMode = layer.blendMode === 'source-over' ? 'normal' : layer.blendMode;
+        layerElements += `  <g id="${escapedName}" opacity="${layer.opacity}" style="mix-blend-mode: ${blendMode}">\n`;
+        layerElements += `    <image href="${dataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" />\n`;
+        layerElements += `  </g>\n`;
+      }
+      svgContent = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n${layerElements}</svg>\n`;
+    } else {
+      const dataUrl = this.canvas.toDataURL('image/png');
+      svgContent = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n  <image href="${dataUrl}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" />\n</svg>\n`;
+    }
+
+    await window.electronAPI?.writeSvgFile(filePath, svgContent);
+  }
+
+  private escapeXml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
   async openFile(): Promise<void> {
     const result = await window.electronAPI?.openFile();
     if (!result) return;

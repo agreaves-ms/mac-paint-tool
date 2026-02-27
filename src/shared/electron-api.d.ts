@@ -3,6 +3,8 @@ export interface ElectronAPI {
   saveFile: (dataUrl: string) => Promise<string | null>;
   getSavePath: () => Promise<string | null>;
   writeImageFile: (filePath: string, dataUrl: string) => Promise<string | null>;
+  getSvgSavePath: () => Promise<string | null>;
+  writeSvgFile: (filePath: string, svgContent: string) => Promise<string | null>;
   writeClipboardImage: (dataUrl: string) => Promise<void>;
   readClipboardImage: () => Promise<string | null>;
   onMenuNew: (callback: () => void) => () => void;
@@ -14,6 +16,7 @@ export interface ElectronAPI {
   onMenuCopy: (callback: () => void) => () => void;
   onMenuCut: (callback: () => void) => () => void;
   onMenuPaste: (callback: () => void) => () => void;
+  onMenuExportSvg: (callback: () => void) => () => void;
 }
 
 declare global {
