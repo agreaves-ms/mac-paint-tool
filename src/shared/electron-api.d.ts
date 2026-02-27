@@ -5,15 +5,15 @@ export interface ElectronAPI {
   writeImageFile: (filePath: string, dataUrl: string) => Promise<string | null>;
   writeClipboardImage: (dataUrl: string) => Promise<void>;
   readClipboardImage: () => Promise<string | null>;
-  onMenuNew: (callback: () => void) => void;
-  onMenuOpen: (callback: () => void) => void;
-  onMenuSave: (callback: () => void) => void;
-  onMenuSaveAs: (callback: () => void) => void;
-  onMenuUndo: (callback: () => void) => void;
-  onMenuRedo: (callback: () => void) => void;
-  onMenuCopy: (callback: () => void) => void;
-  onMenuCut: (callback: () => void) => void;
-  onMenuPaste: (callback: () => void) => void;
+  onMenuNew: (callback: () => void) => () => void;
+  onMenuOpen: (callback: () => void) => () => void;
+  onMenuSave: (callback: () => void) => () => void;
+  onMenuSaveAs: (callback: () => void) => () => void;
+  onMenuUndo: (callback: () => void) => () => void;
+  onMenuRedo: (callback: () => void) => () => void;
+  onMenuCopy: (callback: () => void) => () => void;
+  onMenuCut: (callback: () => void) => () => void;
+  onMenuPaste: (callback: () => void) => () => void;
 }
 
 declare global {

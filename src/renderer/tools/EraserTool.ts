@@ -12,6 +12,7 @@ export class EraserTool implements Tool {
   private currentPathX = 0;
   private currentPathY = 0;
   private stampDistance = 0;
+  private savedCompositeOp: GlobalCompositeOperation = 'source-over';
 
   onPointerDown(e: PointerEvent, ctx: CanvasRenderingContext2D): void {
     const { x, y } = this.getCanvasCoords(e, ctx.canvas);
@@ -23,6 +24,7 @@ export class EraserTool implements Tool {
     this.currentPathY = y;
     this.stampDistance = 0;
 
+    this.savedCompositeOp = ctx.globalCompositeOperation;
     ctx.globalCompositeOperation = 'destination-out';
 
     if (this.isPenStroke) {
@@ -81,7 +83,11 @@ export class EraserTool implements Tool {
       ctx.stroke();
     }
 
-    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalCompositeOperation = this.savedCompositeOp;
+  }
+
+  onDeactivate(): void {
+    this.isDrawing = false;
   }
 
   private stampAt(ctx: CanvasRenderingContext2D, x: number, y: number, width?: number): void {

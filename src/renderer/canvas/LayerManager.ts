@@ -60,6 +60,7 @@ export class LayerManager {
     canvas.style.top = '0';
     canvas.style.pointerEvents = 'none';
     canvas.style.imageRendering = 'pixelated';
+    canvas.style.mixBlendMode = 'normal';
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
 
@@ -170,6 +171,7 @@ export class LayerManager {
     const layer = this.layers.find((l) => l.id === id);
     if (layer) {
       layer.blendMode = mode;
+      layer.canvas.style.mixBlendMode = mode === 'source-over' ? 'normal' : mode;
       this.onChangeCallback?.();
     }
   }

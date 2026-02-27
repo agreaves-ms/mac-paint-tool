@@ -35,6 +35,9 @@ export class PaintEngine {
   private selectionTool: SelectionTool | null = null;
   private eyedropperTool: EyedropperTool | null = null;
 
+  // Dirty tracking
+  private dirty = false;
+
   // Selection state (proxied from SelectionTool for clipboard access)
   selectionRect: SelectionRect | null = null;
   selectionData: ImageData | null = null;
@@ -292,6 +295,7 @@ export class PaintEngine {
       : exportCanvas.toDataURL(mimeType);
 
     await window.electronAPI?.writeImageFile(filePath, dataUrl);
+    this.dirty = false;
   }
 
   exportToBlob(mimeType: string, quality?: number): Promise<Blob> {
@@ -308,18 +312,28 @@ export class PaintEngine {
   async openFile(): Promise<void> {
     const result = await window.electronAPI?.openFile();
     if (!result) return;
+
+    const drawCtx = this.getContext();
+    const backup = drawCtx.getImageData(0, 0, drawCtx.canvas.width, drawCtx.canvas.height);
+
     const img = new Image();
-    img.onload = () => {
-      const drawCtx = this.getContext();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load image'));
+        const binary = atob(result.data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes]);
+        img.src = URL.createObjectURL(blob);
+      });
       drawCtx.clearRect(0, 0, drawCtx.canvas.width, drawCtx.canvas.height);
       drawCtx.drawImage(img, 0, 0);
       URL.revokeObjectURL(img.src);
-    };
-    const binary = atob(result.data);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes]);
-    img.src = URL.createObjectURL(blob);
+      this.dirty = false;
+    } catch {
+      drawCtx.putImageData(backup, 0, 0);
+    }
   }
 
   // Document management
@@ -342,6 +356,19 @@ export class PaintEngine {
       }
     }
     this.resetZoom();
+    this.dirty = false;
+  }
+
+  markDirty(): void {
+    this.dirty = true;
+  }
+
+  isDirty(): boolean {
+    return this.dirty;
+  }
+
+  clearDirty(): void {
+    this.dirty = false;
   }
 
   // Canvas resize and crop

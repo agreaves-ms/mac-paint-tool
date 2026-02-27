@@ -7,13 +7,49 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writeImageFile: (filePath: string, dataUrl: string) => ipcRenderer.invoke('file:writeImage', filePath, dataUrl),
   writeClipboardImage: (dataUrl: string) => ipcRenderer.invoke('clipboard:write-image', dataUrl),
   readClipboardImage: () => ipcRenderer.invoke('clipboard:read-image'),
-  onMenuNew: (callback: () => void) => ipcRenderer.on('menu-new', callback),
-  onMenuOpen: (callback: () => void) => ipcRenderer.on('menu-open', callback),
-  onMenuSave: (callback: () => void) => ipcRenderer.on('menu-save', callback),
-  onMenuSaveAs: (callback: () => void) => ipcRenderer.on('menu-save-as', callback),
-  onMenuUndo: (callback: () => void) => ipcRenderer.on('menu-undo', callback),
-  onMenuRedo: (callback: () => void) => ipcRenderer.on('menu-redo', callback),
-  onMenuCopy: (callback: () => void) => ipcRenderer.on('menu-copy', callback),
-  onMenuCut: (callback: () => void) => ipcRenderer.on('menu-cut', callback),
-  onMenuPaste: (callback: () => void) => ipcRenderer.on('menu-paste', callback),
+  onMenuNew: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-new', handler);
+    return () => { ipcRenderer.removeListener('menu-new', handler); };
+  },
+  onMenuOpen: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-open', handler);
+    return () => { ipcRenderer.removeListener('menu-open', handler); };
+  },
+  onMenuSave: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-save', handler);
+    return () => { ipcRenderer.removeListener('menu-save', handler); };
+  },
+  onMenuSaveAs: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-save-as', handler);
+    return () => { ipcRenderer.removeListener('menu-save-as', handler); };
+  },
+  onMenuUndo: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-undo', handler);
+    return () => { ipcRenderer.removeListener('menu-undo', handler); };
+  },
+  onMenuRedo: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-redo', handler);
+    return () => { ipcRenderer.removeListener('menu-redo', handler); };
+  },
+  onMenuCopy: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-copy', handler);
+    return () => { ipcRenderer.removeListener('menu-copy', handler); };
+  },
+  onMenuCut: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-cut', handler);
+    return () => { ipcRenderer.removeListener('menu-cut', handler); };
+  },
+  onMenuPaste: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('menu-paste', handler);
+    return () => { ipcRenderer.removeListener('menu-paste', handler); };
+  },
 });

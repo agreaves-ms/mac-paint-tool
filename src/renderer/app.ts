@@ -21,6 +21,10 @@ import { PropertyPanel } from './ui/PropertyPanel';
 import { LayerPanel } from './ui/LayerPanel';
 import { NewDocumentDialog } from './ui/NewDocumentDialog';
 import { ResizeDialog } from './ui/ResizeDialog';
+import { BrushEngine } from './tools/BrushEngine';
+import { BrushPresetPanel } from './ui/BrushPresetPanel';
+import { CurvesDialog } from './ui/CurvesDialog';
+import { Adjustments } from './canvas/Adjustments';
 import type { Tool } from './tools/Tool';
 
 // Canvas & engine
@@ -49,6 +53,8 @@ const curveTool = new CurveTool();
 const lassoTool = new LassoTool();
 const gradientTool = new GradientTool();
 const colorSelection = new ColorSelection(canvas);
+const brushEngine = new BrushEngine();
+const curvesDialog = new CurvesDialog();
 
 // Wire eyedropper and selection tool into PaintEngine
 engine.setSelectionTool(selectionTool);
@@ -202,6 +208,7 @@ const layerResolver = (id: string) => engine.resolveLayerContext(id);
 canvas.addEventListener('pointerdown', () => {
   const lm = engine.getLayerManager();
   undoManager.saveState(engine.getContext(), lm?.getActiveLayerId());
+  engine.markDirty();
 });
 
 function undo(): void {
@@ -212,15 +219,25 @@ function redo(): void {
   undoManager.redo(engine.getContext(), layerResolver);
 }
 
+// Unsaved changes guard
+function confirmUnsavedChanges(): boolean {
+  if (!engine.isDirty()) return true;
+  return confirm('You have unsaved changes. Continue?');
+}
+
 // Wire Electron menu events
 window.electronAPI?.onMenuNew(() => {
+  if (!confirmUnsavedChanges()) return;
   const dialog = new NewDocumentDialog((width, height, bgColor) => {
     undoManager.clear();
     engine.newDocument(width, height, bgColor);
   });
   dialog.show();
 });
-window.electronAPI?.onMenuOpen(() => engine.openFile());
+window.electronAPI?.onMenuOpen(() => {
+  if (!confirmUnsavedChanges()) return;
+  engine.openFile();
+});
 window.electronAPI?.onMenuSave(() => engine.saveFile());
 window.electronAPI?.onMenuSaveAs(() => engine.saveFile());
 window.electronAPI?.onMenuUndo(() => undo());
@@ -239,13 +256,14 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   if (isMeta && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); return; }
   if (isMeta && e.key === 'y') { e.preventDefault(); redo(); return; }
   if (isMeta && e.key === 's') { e.preventDefault(); engine.saveFile(); return; }
-  if (isMeta && e.key === 'o') { e.preventDefault(); engine.openFile(); return; }
+  if (isMeta && e.key === 'o') { e.preventDefault(); if (confirmUnsavedChanges()) engine.openFile(); return; }
   if (isMeta && e.key === 'c' && !e.shiftKey) { e.preventDefault(); engine.copySelection(); return; }
   if (isMeta && e.key === 'x') { e.preventDefault(); engine.cutSelection(); return; }
   if (isMeta && e.key === 'v' && e.shiftKey) { e.preventDefault(); engine.pasteAsNew(); return; }
   if (isMeta && e.key === 'v') { e.preventDefault(); engine.pasteFromClipboard(); return; }
   if (isMeta && e.key === 'n') {
     e.preventDefault();
+    if (!confirmUnsavedChanges()) return;
     const dialog = new NewDocumentDialog((w, h, bg) => {
       undoManager.clear();
       engine.newDocument(w, h, bg);
@@ -277,6 +295,26 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     undoManager.saveState(ctx, engine.getLayerManager()?.getActiveLayerId());
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.putImageData(Filters.invert(imageData), 0, 0);
+    return;
+  }
+  if (isMeta && e.key === 'm' && !e.shiftKey) {
+    e.preventDefault();
+    const ctx = engine.getContext();
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    undoManager.saveState(ctx, engine.getLayerManager()?.getActiveLayerId());
+    const backup = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    curvesDialog.show(
+      imageData,
+      (lutR, lutG, lutB) => {
+        const current = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        Adjustments.applyCurvesPerChannel(current, lutR, lutG, lutB);
+        ctx.putImageData(current, 0, 0);
+        engine.markDirty();
+      },
+      () => {
+        ctx.putImageData(backup, 0, 0);
+      }
+    );
     return;
   }
 
@@ -404,6 +442,9 @@ engine.initGrid(canvasContainer);
 
 // Layer panel
 new LayerPanel(document.getElementById('property-panel')!, layerManager);
+
+// Brush preset panel
+new BrushPresetPanel(document.getElementById('property-panel')!, brushEngine);
 
 // Set default tool
 selectTool('brush');

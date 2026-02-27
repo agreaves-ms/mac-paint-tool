@@ -125,6 +125,8 @@ const createWindow = () => {
     });
     if (result.canceled || result.filePaths.length === 0) return null;
     const filePath = result.filePaths[0];
+    const stats = fs.statSync(filePath);
+    if (stats.size > 50 * 1024 * 1024) return null;
     const data = fs.readFileSync(filePath);
     return { filePath, data: data.toString('base64') };
   });
