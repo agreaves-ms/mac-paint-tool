@@ -250,6 +250,11 @@ html, body {
   color: #ffffff;
 }
 
+.toolbar-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 /* Property Panel */
 .prop-section {
   margin-bottom: 12px;
