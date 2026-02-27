@@ -27,7 +27,7 @@ Replaced all 15 Unicode/emoji toolbar icons with consistent inline SVG icons des
 |---|---|---|
 | 1 | brush | Angled pen/pencil tip with edit line |
 | 2 | eraser | Wedge eraser with baseline |
-| 3 | fill | Triangle bucket with pour droplet |
+| 3 | fill | Classic bucket silhouette with handle arc and paint drip |
 | 4 | gradient | Rectangle with vertical division lines |
 | 5 | selection | Crosshair target with inner circle |
 | 6 | marquee | Dashed rectangle (marching ants) |

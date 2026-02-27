@@ -92,6 +92,8 @@ npx vite --config vite.renderer.config.ts --port 5174
 - Port 5174 avoids conflicts with Electron Forge's port 5173.
 - `window.electronAPI` (preload bridge) is **not available** in standalone mode — file dialogs, clipboard IPC, and menu event listeners will not work. Test canvas drawing and UI interactions only.
 
+**Important**: Always stop vite and close down the Plawright MCP tool browser/session when ending a session and returning back to the user.
+
 ### Playwright MCP Tool Usage
 
 **Navigation:**

@@ -82,6 +82,8 @@ html, body {
   align-items: center;
   padding: 4px;
   gap: 2px;
+  overflow: visible;
+  z-index: 100;
 }
 
 #canvas-container {
@@ -237,6 +239,7 @@ html, body {
   align-items: center;
   justify-content: center;
   transition: background 0.15s, border-color 0.15s;
+  position: relative;
 }
 
 .toolbar-btn:hover {
@@ -253,6 +256,42 @@ html, body {
 .toolbar-btn svg {
   width: 18px;
   height: 18px;
+}
+
+.shortcut-indicator {
+  position: absolute;
+  bottom: 1px;
+  right: 2px;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.toolbar-btn.active .shortcut-indicator {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tool-name-label {
+  position: fixed;
+  padding: 3px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.toolbar-btn:hover .tool-name-label {
+  opacity: 1;
 }
 
 /* Property Panel */

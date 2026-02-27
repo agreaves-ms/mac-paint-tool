@@ -18,9 +18,9 @@
 
 ### Status: PASS
 
-**Finding 1 (Minor)**: Fill icon uses triangle shape (paint funnel) instead of classic bucket silhouette — still recognizable due to water droplet but could be more traditional.
-- Evidence: Screenshot shows triangle + droplet; conventional paint tools use a tilted bucket silhouette.
-- Recommendation: Consider redesigning to bucket silhouette in follow-up.
+**Finding 1 (Minor)**: ~~Fill icon uses triangle shape~~ **RESOLVED** — Redesigned to classic bucket silhouette with handle arc and paint drip. Verified via Playwright screenshot.
+- Evidence: Screenshot shows bucket body (trapezoid), handle arc, and paint drip to the right.
+- Status: Fixed in iteration 2.
 
 **Finding 2 (Minor)**: Rectangle and RoundedRect icons are somewhat similar at small size — differentiated by corner radius (rx=0.5 vs rx=3) but may be hard to distinguish at a quick glance.
 - Evidence: Side-by-side comparison in toolbar screenshot shows subtle difference.
