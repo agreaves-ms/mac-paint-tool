@@ -1,5 +1,9 @@
 # General Instructions
 
+All state tracking, memory files, and context capturing files go into the .copilot-tracking/ folders.
+
+Use files from .copilot-tracking/ to understand decisions made in this codebase.
+
 ## Technology Stack
 
 - **Runtime:** Electron (Electron Forge + Vite bundler)
@@ -83,7 +87,6 @@ Full-canvas pixel scan with Euclidean distance against target color. Gradiance s
 The Electron Forge Vite dev server (`npm run start`) is **not accessible** from an external browser. Playwright's Chromium cannot navigate to it — `page.goto` will timeout or abort because the Electron shell intercepts the renderer URL.
 
 **Use a standalone Vite dev server instead:**
-
 ```bash
 npx vite --config vite.renderer.config.ts --port 5174
 ```
