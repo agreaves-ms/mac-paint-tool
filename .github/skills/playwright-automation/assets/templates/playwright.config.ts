@@ -38,9 +38,10 @@ export default defineConfig({
     },
   ],
 
-  // Start the Vite dev server before running tests
+  // Start the dev server before running tests.
+  // Replace the command below with your project's dev server start command.
   webServer: {
-    command: 'npx vite --config vite.renderer.config.ts --port 5174',
+    command: 'npm run dev -- --port 5174',
     url: 'http://localhost:5174',
     reuseExistingServer: !process.env.CI,
   },

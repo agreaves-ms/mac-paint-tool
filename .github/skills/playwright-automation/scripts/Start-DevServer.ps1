@@ -30,6 +30,10 @@ $true, $false).
 .PARAMETER TimeoutSeconds
 Maximum seconds to wait for server readiness. Defaults to 30.
 
+.PARAMETER ReadinessUrl
+Custom URL to poll for readiness instead of http://localhost:<Port>.
+Useful when the server's health endpoint differs from the root URL.
+
 .EXAMPLE
 ./Start-DevServer.ps1 -Command "npm run dev -- --port 5174"
 Starts the dev server using an npm script.
@@ -37,6 +41,10 @@ Starts the dev server using an npm script.
 .EXAMPLE
 ./Start-DevServer.ps1 -Command "npx vite --config vite.renderer.config.ts --port 3000" -Port 3000
 Starts a Vite dev server on port 3000.
+
+.EXAMPLE
+./Start-DevServer.ps1 -Command "node server.js" -Port 8080 -ReadinessUrl "http://localhost:8080/health"
+Starts a Node server and polls a custom health endpoint for readiness.
 
 .EXAMPLE
 ./Start-DevServer.ps1 -Command "node server.js" -Port 8080 -Wait:$false
@@ -55,7 +63,10 @@ param(
     [string]$Wait = 'true',
 
     [Parameter()]
-    [int]$TimeoutSeconds = 30
+    [int]$TimeoutSeconds = 30,
+
+    [Parameter()]
+    [string]$ReadinessUrl
 )
 
 $ErrorActionPreference = 'Stop'
@@ -128,7 +139,7 @@ if ($MyInvocation.InvocationName -ne '.') {
 
         $repoRoot = Get-RepositoryRoot
         $shouldWait = ConvertTo-Boolean -Value $Wait
-        $url = "http://localhost:$Port"
+        $url = if ($ReadinessUrl) { $ReadinessUrl } else { "http://localhost:$Port" }
         $logFile = Join-Path $repoRoot '.dev-server.log'
         $pidFile = Join-Path $repoRoot '.dev-server.pid'
 

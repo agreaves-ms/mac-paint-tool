@@ -90,6 +90,7 @@ Run Playwright tests:
 | Port           | `-Port`           | `5174`                       | Port for readiness checking                  |
 | Wait           | `-Wait`           | `$true`                      | Wait until server is ready before returning  |
 | Timeout        | `-TimeoutSeconds` | `30`                         | Seconds to wait for server readiness         |
+| ReadinessUrl   | `-ReadinessUrl`   | `http://localhost:<Port>`    | Custom URL to poll for readiness             |
 
 ### Stop-DevServer
 

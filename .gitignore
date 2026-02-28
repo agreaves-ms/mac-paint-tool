@@ -46,3 +46,6 @@ tests/playwright/**/bin/
 tests/playwright/**/obj/
 
 # .copilot-tracking/
+
+.playwright/
+.playwright-cli/

@@ -111,14 +111,14 @@ Use semantic locators in this order:
 
 ## Project-Specific Pitfalls (mac-paint-tool)
 
-### 1. Electron Forge dev server is not accessible
+### 1. Framework dev server may not be accessible
 
-The Electron Forge Vite server (`npm run start`) on port 5173 serves content intended for the Electron renderer process. Navigating to it from Playwright causes `net::ERR_ABORTED` or infinite timeouts.
+Some framework dev servers (for example, Electron Forge on port 5173) serve content intended for the framework runtime, not external browsers. Navigating to them from Playwright causes `net::ERR_ABORTED` or infinite timeouts.
 
-**Solution**: Use a standalone Vite server:
+**Solution**: Start a standalone dev server with a command that serves the app directly:
 
 ```powershell
-./scripts/Start-DevServer.ps1 -Port 5174
+./scripts/Start-DevServer.ps1 -Command "npm run dev -- --port 5174" -Port 5174
 ```
 
 ### 2. Port conflict avoidance
@@ -127,7 +127,7 @@ Port 5174 avoids conflicts with Electron Forge's port 5173. Always use 5174 for 
 
 ### 3. No electronAPI in standalone mode
 
-`window.electronAPI` (preload bridge) is **not available** when running the standalone Vite server. File save/open, clipboard, and menu IPC handlers do not work.
+`window.electronAPI` (preload bridge) is **not available** when running a standalone dev server outside the Electron shell. File save/open, clipboard, and menu IPC handlers do not work.
 
 **What works**: Canvas drawing, UI interactions, tool selection, color picking
 **What does not work**: File dialogs, save/open, clipboard paste, menu event listeners
@@ -224,8 +224,8 @@ Always close browsers and stop servers when ending a session:
 
 ```powershell
 ./scripts/Stop-Browser.ps1 -All
-# Stop the Vite dev server process
-Stop-Process -Id <PID>
+# Stop the dev server
+./scripts/Stop-DevServer.ps1
 ```
 
 ### 3. Use named sessions for parallel work
