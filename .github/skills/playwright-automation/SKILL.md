@@ -313,10 +313,10 @@ The following templates are available for agent code generation:
 
 For detailed feature documentation covering all 18 Playwright categories:
 
-* [Full feature reference](references/REFERENCE.md) — CLI commands and API examples for every feature
-* [CLI command quick reference](references/CLI-COMMANDS.md) — Concise CLI command listing
-* [MCP → CLI → API mapping](references/API-MAPPING.md) — Translation table between approaches
-* [Pitfalls and best practices](references/PITFALLS.md) — Common mistakes and project-specific guidance
+* [Full feature reference](references/reference.md) — CLI commands and API examples for every feature
+* [CLI command quick reference](references/cli-commands.md) — Concise CLI command listing
+* [MCP → CLI → API mapping](references/api-mapping.md) — Translation table between approaches
+* [Pitfalls and best practices](references/pitfalls.md) — Common mistakes and project-specific guidance
 
 ## Troubleshooting
 
