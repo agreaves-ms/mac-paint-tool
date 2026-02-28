@@ -56,6 +56,8 @@ When using this skill from an agent runtime:
 * After launching, verify headed state with `playwright-cli list` and confirm `headed: true`.
 * If a task mentions export terms such as `export`, `save as`, `download`, `SVG`, or `PNG`, treat it as a browser automation requirement first.
 * In standalone mode (`http://localhost:5174`), satisfy export requests with browser-available APIs (for example, `canvas.toDataURL()`, Blob download links, in-page serialization) instead of Electron IPC/menu handlers.
+* For single-expression JavaScript, use `Invoke-BrowserAction.ps1 -Action eval`. For multi-statement scripts (complex drawing, multi-step DOM manipulation), use `playwright-cli run-code "async (page) => { ... }"` directly — `eval` wraps code as `() => (code)` and cannot handle statements or declarations.
+* Prefer direct Canvas 2D API calls via `run-code` over simulating pointer events for complex drawing — direct context drawing produces deterministic, pixel-accurate results without tool state dependencies.
 
 ### Export Semantics in Standalone Mode
 
@@ -225,8 +227,11 @@ Run Playwright tests:
     # Press keyboard key
     ./scripts/Invoke-BrowserAction.ps1 -Action press -Value "Enter"
 
-    # Evaluate JavaScript
+    # Evaluate a single JavaScript expression
     ./scripts/Invoke-BrowserAction.ps1 -Action eval -Value "document.title"
+
+    # For multi-statement scripts, use run-code directly via CLI (not through wrapper)
+    # playwright-cli run-code "async (page) => { await page.evaluate(() => { /* complex logic */ }); }"
 
     # Navigate to URL
     ./scripts/Invoke-BrowserAction.ps1 -Action goto -Value "http://localhost:5174"
@@ -292,6 +297,8 @@ Key rules:
 * In agent tool execution, keep server/browser startup non-blocking and continue with follow-up commands
 * For visual/manual verification tasks, require headed mode and verify it explicitly
 * For export tasks in standalone mode, use browser-only export flows rather than Electron IPC
+* Use `eval` for reading single values (e.g., `document.title`); use `run-code` for multi-statement scripts — `eval` cannot handle variable declarations, IIFEs, or multi-line logic
+* For complex canvas drawing, use `run-code` with `page.evaluate` calls rather than simulating pointer events — direct context drawing is more reliable and deterministic
 
 ## Templates
 

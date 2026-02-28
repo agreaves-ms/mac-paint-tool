@@ -87,11 +87,13 @@ All commands use `playwright-cli` (or `npx playwright-cli`). Use `-s=<name>` bef
 
 ## JavaScript
 
+`eval` wraps code as `() => (code)` — use for **single expressions only**. Multi-statement scripts, variable declarations, and IIFEs fail. Use `run-code` with `async (page) => { ... }` for anything beyond a single expression.
+
 | Command | Description |
 | --- | --- |
-| `eval "<expression>"` | Evaluate expression |
-| `eval "<fn>" <ref>` | Evaluate on element |
-| `run-code "<asyncFn>"` | Run full Playwright code |
+| `eval "<expression>"` | Evaluate a single expression (e.g., `eval "document.title"`) |
+| `eval "<fn>" <ref>` | Evaluate expression on element |
+| `run-code "<asyncFn>"` | Run multi-statement Playwright code (e.g., `run-code "async (page) => { ... }"`) |
 
 ## Dialogs
 

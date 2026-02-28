@@ -42,14 +42,63 @@ Pass `--headed` to `open`, not to subsequent commands. The display mode is set a
 **Wrong**: `playwright-cli click e3 --headed`
 **Right**: `playwright-cli open https://example.com --headed`
 
-### 4. Quoting in run-code
+### 4. eval vs run-code — know the difference
+
+`eval` wraps your code as `() => (code)`, so it only works for **single expressions**. Multi-statement scripts, IIFEs, or code with variable declarations fail silently or return "result is not a function".
+
+**Wrong** — multi-statement code with `eval`:
+
+```bash
+playwright-cli eval "const canvas = document.getElementById('paint-canvas'); canvas.toDataURL()"
+# Fails: "result is not a function" — eval wraps as () => (const canvas = ...) which is invalid
+```
+
+**Wrong** — file piped into `eval`:
+
+```bash
+playwright-cli eval "$(cat script.js)"
+# Fails: CLI wraps the entire file contents as a single expression
+```
+
+**Right** — single expression with `eval`:
+
+```bash
+playwright-cli eval "document.title"
+playwright-cli eval "document.getElementById('paint-canvas').toDataURL()"
+```
+
+**Right** — multi-statement code with `run-code`:
+
+```bash
+playwright-cli run-code "async (page) => {
+  const result = await page.evaluate(() => {
+    const canvas = document.getElementById('paint-canvas');
+    return canvas.toDataURL();
+  });
+  console.log(result);
+}"
+```
+
+**Decision guide**:
+
+| Need | Use | Example |
+| --- | --- | --- |
+| Read a single value | `eval` | `eval "document.title"` |
+| Call a single method | `eval` | `eval "document.querySelector('#btn').click()"` |
+| Multi-statement logic | `run-code` | `run-code "async (page) => { ... }"` |
+| Canvas drawing (complex) | `run-code` | Full `page.evaluate` with drawing code |
+| File/script execution | `run-code` | Wrap file contents in async function |
+
+> **Note**: `run-code` is not available through the `Invoke-BrowserAction.ps1` wrapper. Use `playwright-cli run-code` directly for multi-statement scripts.
+
+### 5. Quoting in run-code
 
 Use double quotes for the outer string, single quotes inside:
 
 **Wrong**: `playwright-cli run-code 'async page => { await page.goto("url"); }'`
 **Right**: `playwright-cli run-code "async page => { await page.goto('url'); }"`
 
-### 5. Session isolation
+### 6. Session isolation
 
 Named sessions are fully isolated (separate cookies, storage, cache). Use this for parallel testing but be aware that state is not shared between sessions.
 
@@ -149,18 +198,42 @@ SVG-specific guidance:
 
 ### 4. Canvas testing via evaluate
 
-For drawing on the canvas, use `page.evaluate()` to call Canvas 2D API directly:
+For drawing on the canvas, use `page.evaluate()` to call Canvas 2D API directly. Direct context drawing is **more reliable for complex shapes** than simulating pointer events, because it bypasses tool smoothing, stamp logic, and event timing issues.
 
-```typescript
-await page.evaluate(() => {
-  const canvas = document.getElementById('paint-canvas') as HTMLCanvasElement;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.fillStyle = 'red';
-    ctx.fillRect(100, 100, 50, 50);
-  }
-});
+**Simple shapes** — use `eval` via the wrapper script:
+
+```powershell
+./scripts/Invoke-BrowserAction.ps1 -Action eval -Value "document.getElementById('paint-canvas').getContext('2d').fillRect(100, 100, 50, 50)"
 ```
+
+**Complex drawings** — use `run-code` directly via CLI with `page.evaluate`:
+
+```bash
+playwright-cli run-code "async (page) => {
+  await page.evaluate(() => {
+    const canvas = document.getElementById('paint-canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.strokeStyle = '#E8A84C';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(512, 400, 80, 120, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#2A1F14';
+    ctx.beginPath();
+    ctx.arc(490, 370, 8, 0, Math.PI * 2);
+    ctx.arc(534, 370, 8, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}"
+```
+
+**Why direct drawing over pointer events**:
+
+* Pointer event simulation depends on tool state (active tool, brush size, opacity, hardness)
+* Event timing and ordering can produce inconsistent strokes
+* Complex multi-color, multi-size drawings require frequent tool/property changes via UI interaction
+* Direct `ctx` calls give deterministic, pixel-accurate results
 
 ### 5. Viewport sizing
 
