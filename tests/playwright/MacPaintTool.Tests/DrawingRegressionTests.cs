@@ -1,5 +1,4 @@
 using Microsoft.Playwright;
-using Microsoft.Playwright.Xunit;
 
 namespace MacPaintTool.Tests;
 
@@ -8,25 +7,14 @@ namespace MacPaintTool.Tests;
 /// Requires a standalone Vite dev server running on port 5174:
 /// <c>npx vite --config vite.renderer.config.ts --port 5174</c>
 /// </summary>
-public class DrawingRegressionTests : PageTest
+public class DrawingRegressionTests : MacPaintTestBase
 {
-    private const string AppUrl = "http://localhost:5174";
     private const string OutputFileName = "what-i-think-about.png";
-
-    public override BrowserNewContextOptions ContextOptions()
-    {
-        return new BrowserNewContextOptions
-        {
-            ViewportSize = new ViewportSize { Width = 1400, Height = 1100 }
-        };
-    }
 
     [Fact]
     public async Task WhenDrawingCompleted_CaptureCanvas_ProducesExpectedImage()
     {
-        await Page.GotoAsync(AppUrl, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
-
-        await Expect(Page).ToHaveTitleAsync("Mac Paint");
+        await NavigateToAppAsync();
 
         await DrawSkyAndStars();
         await DrawSunAndWater();
@@ -36,12 +24,9 @@ public class DrawingRegressionTests : PageTest
 
         var outputPath = Path.Combine(GetOutputDirectory(), OutputFileName);
 
-        await SaveCanvasToFile(outputPath);
+        await SaveCanvasToFileAsync(outputPath);
 
-        Assert.True(File.Exists(outputPath), $"Expected output file at {outputPath}");
-
-        var fileInfo = new FileInfo(outputPath);
-        Assert.True(fileInfo.Length > 10_000, $"Output file too small ({fileInfo.Length} bytes), drawing may be blank");
+        AssertFileExistsAndNotEmpty(outputPath);
     }
 
     private async Task DrawSkyAndStars()
@@ -586,51 +571,5 @@ public class DrawingRegressionTests : PageTest
             ctx.globalAlpha = 1.0;
             ctx.restore();
         }");
-    }
-
-    /// <summary>
-    /// Extracts the canvas pixel data as a PNG data URL, decodes it, and writes to disk.
-    /// </summary>
-    private async Task SaveCanvasToFile(string outputPath)
-    {
-        var dataUrl = await Page.EvaluateAsync<string>(@"() => {
-            const canvas = document.getElementById('paint-canvas');
-            return canvas.toDataURL('image/png');
-        }");
-
-        var base64Data = dataUrl.Split(',')[1];
-        var imageBytes = Convert.FromBase64String(base64Data);
-
-        var directory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        await File.WriteAllBytesAsync(outputPath, imageBytes);
-    }
-
-    private static string GetOutputDirectory()
-    {
-        var projectRoot = FindProjectRoot();
-        var outputDir = Path.Combine(projectRoot, "tests", "playwright", "output");
-        Directory.CreateDirectory(outputDir);
-        return outputDir;
-    }
-
-    private static string FindProjectRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "package.json")))
-            {
-                return dir.FullName;
-            }
-
-            dir = dir.Parent;
-        }
-
-        return AppContext.BaseDirectory;
     }
 }

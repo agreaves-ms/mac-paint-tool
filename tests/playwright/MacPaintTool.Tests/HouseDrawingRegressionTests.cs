@@ -1,5 +1,4 @@
 using Microsoft.Playwright;
-using Microsoft.Playwright.Xunit;
 
 namespace MacPaintTool.Tests;
 
@@ -8,25 +7,15 @@ namespace MacPaintTool.Tests;
 /// Requires a standalone Vite dev server running on port 5174:
 /// <c>npx vite --config vite.renderer.config.ts --port 5174</c>
 /// </summary>
-public class HouseDrawingRegressionTests : PageTest
+public class HouseDrawingRegressionTests : MacPaintTestBase
 {
-    private const string AppUrl = "http://localhost:5174";
     private const string PngOutputFileName = "house-drawing.png";
     private const string SvgOutputFileName = "house-drawing.svg";
-
-    public override BrowserNewContextOptions ContextOptions()
-    {
-        return new BrowserNewContextOptions
-        {
-            ViewportSize = new ViewportSize { Width = 1400, Height = 1100 }
-        };
-    }
 
     [Fact]
     public async Task WhenHouseDrawn_CaptureCanvas_ProducesExpectedPng()
     {
-        await Page.GotoAsync(AppUrl, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
-        await Expect(Page).ToHaveTitleAsync("Mac Paint");
+        await NavigateToAppAsync();
 
         await DrawSkyAndGround();
         await DrawHouseBody();
@@ -36,19 +25,15 @@ public class HouseDrawingRegressionTests : PageTest
         await DrawFenceAndDetails();
 
         var outputPath = Path.Combine(GetOutputDirectory(), PngOutputFileName);
-        await SaveCanvasToFile(outputPath);
+        await SaveCanvasToFileAsync(outputPath);
 
-        Assert.True(File.Exists(outputPath), $"Expected output file at {outputPath}");
-
-        var fileInfo = new FileInfo(outputPath);
-        Assert.True(fileInfo.Length > 10_000, $"Output file too small ({fileInfo.Length} bytes), drawing may be blank");
+        AssertFileExistsAndNotEmpty(outputPath);
     }
 
     [Fact]
     public async Task WhenHouseDrawn_ExportAsSvg_ProducesValidSvg()
     {
-        await Page.GotoAsync(AppUrl, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
-        await Expect(Page).ToHaveTitleAsync("Mac Paint");
+        await NavigateToAppAsync();
 
         await DrawSkyAndGround();
         await DrawHouseBody();
@@ -58,7 +43,7 @@ public class HouseDrawingRegressionTests : PageTest
         await DrawFenceAndDetails();
 
         var outputPath = Path.Combine(GetOutputDirectory(), SvgOutputFileName);
-        await SaveCanvasAsSvg(outputPath);
+        await SaveCanvasAsSvgAsync(outputPath);
 
         Assert.True(File.Exists(outputPath), $"Expected SVG file at {outputPath}");
 
@@ -67,8 +52,7 @@ public class HouseDrawingRegressionTests : PageTest
         Assert.Contains("xmlns=\"http://www.w3.org/2000/svg\"", svgContent);
         Assert.Contains("<image", svgContent);
 
-        var fileInfo = new FileInfo(outputPath);
-        Assert.True(fileInfo.Length > 10_000, $"SVG file too small ({fileInfo.Length} bytes), drawing may be blank");
+        AssertFileExistsAndNotEmpty(outputPath);
     }
 
     private async Task DrawSkyAndGround()
@@ -484,74 +468,5 @@ public class HouseDrawingRegressionTests : PageTest
             ctx.globalAlpha = 1.0;
             ctx.textAlign = 'start';
         }");
-    }
-
-    /// <summary>
-    /// Extracts the canvas pixel data as a PNG data URL, decodes it, and writes to disk.
-    /// </summary>
-    private async Task SaveCanvasToFile(string outputPath)
-    {
-        var dataUrl = await Page.EvaluateAsync<string>(@"() => {
-            const canvas = document.getElementById('paint-canvas');
-            return canvas.toDataURL('image/png');
-        }");
-
-        var base64Data = dataUrl.Split(',')[1];
-        var imageBytes = Convert.FromBase64String(base64Data);
-
-        var directory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        await File.WriteAllBytesAsync(outputPath, imageBytes);
-    }
-
-    /// <summary>
-    /// Generates an SVG file wrapping the canvas content as an embedded PNG image.
-    /// Mirrors the PaintEngine.exportAsSvg() behavior without requiring Electron IPC.
-    /// </summary>
-    private async Task SaveCanvasAsSvg(string outputPath)
-    {
-        var svgContent = await Page.EvaluateAsync<string>(@"() => {
-            const canvas = document.getElementById('paint-canvas');
-            const W = canvas.width;
-            const H = canvas.height;
-            const dataUrl = canvas.toDataURL('image/png');
-            return `<?xml version=""1.0"" encoding=""UTF-8""?>\n<svg xmlns=""http://www.w3.org/2000/svg"" width=""${W}"" height=""${H}"" viewBox=""0 0 ${W} ${H}"">\n  <image href=""${dataUrl}"" x=""0"" y=""0"" width=""${W}"" height=""${H}"" preserveAspectRatio=""none"" />\n</svg>\n`;
-        }");
-
-        var directory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        await File.WriteAllTextAsync(outputPath, svgContent);
-    }
-
-    private static string GetOutputDirectory()
-    {
-        var projectRoot = FindProjectRoot();
-        var outputDir = Path.Combine(projectRoot, "tests", "playwright", "output");
-        Directory.CreateDirectory(outputDir);
-        return outputDir;
-    }
-
-    private static string FindProjectRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "package.json")))
-            {
-                return dir.FullName;
-            }
-
-            dir = dir.Parent;
-        }
-
-        return AppContext.BaseDirectory;
     }
 }
