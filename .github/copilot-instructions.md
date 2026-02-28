@@ -2,6 +2,8 @@
 
 All state tracking, memory files, and context capturing files go into the .copilot-tracking/ folders.
 
+Put all temporary files (anything that would go into /tmp/) into into .copilot-tracking/ folders, clean them up when you're done with them.
+
 Use files from .copilot-tracking/ to understand decisions made in this codebase.
 
 ## Technology Stack

@@ -29,15 +29,17 @@ Use a persistent browser profile that survives browser restarts.
 Path to a specific browser profile directory.
 
 .PARAMETER BrowserType
-Browser engine to use: chromium, firefox, webkit, or msedge.
-Defaults to chromium.
+Browser channel/engine to use: chrome, msedge, firefox, or webkit.
+The value `chromium` is accepted as an alias and maps to `chrome` for
+compatibility with older skill examples.
+Defaults to chrome.
 
 .PARAMETER ViewportSize
 Viewport dimensions as WIDTHxHEIGHT string. Defaults to 1280x720.
 
 .EXAMPLE
 ./Start-Browser.ps1 -Url "http://localhost:5174" -Headed
-Opens a visible Chromium browser and navigates to the URL.
+Opens a visible Chrome browser and navigates to the URL.
 
 .EXAMPLE
 ./Start-Browser.ps1 -Url "http://localhost:5174" -Session "testing" -Headed
@@ -66,8 +68,8 @@ param(
     [string]$ProfilePath,
 
     [Parameter()]
-    [ValidateSet('chromium', 'firefox', 'webkit', 'msedge')]
-    [string]$BrowserType = 'chromium',
+    [ValidateSet('chrome', 'chromium', 'firefox', 'webkit', 'msedge')]
+    [string]$BrowserType = 'chrome',
 
     [Parameter()]
     [ValidatePattern('^\d+x\d+$')]
@@ -96,7 +98,12 @@ System.String
         [string]$ViewportSize
     )
 
-    $cliArgs = @('open')
+    $resolvedBrowser = switch ($BrowserType) {
+        'chromium' { 'chrome' }
+        default { $BrowserType }
+    }
+
+    $cliArgs = @('open', "--browser=$resolvedBrowser")
 
     if ($Url) {
         $cliArgs += $Url
@@ -114,11 +121,15 @@ System.String
         $cliArgs += "--profile=$ProfilePath"
     }
 
-    # Set environment variables for browser and viewport
-    $env:PLAYWRIGHT_MCP_BROWSER = $BrowserType
-    $env:PLAYWRIGHT_MCP_VIEWPORT_SIZE = $ViewportSize
-
     $output = Invoke-PlaywrightCli -Arguments $cliArgs -Session $Session
+
+    # playwright-cli uses a separate resize command for viewport changes.
+    if ($ViewportSize) {
+        $size = $ViewportSize -split 'x'
+        if ($size.Count -eq 2) {
+            $null = Invoke-PlaywrightCli -Arguments @('resize', $size[0], $size[1]) -Session $Session
+        }
+    }
 
     return $output
 }
@@ -149,7 +160,41 @@ if ($MyInvocation.InvocationName -ne '.') {
         exit 0
     }
     catch {
-        Write-Error -ErrorAction Continue "Start-Browser failed: $($_.Exception.Message)"
+        $errorText = $_.Exception.Message
+
+        # First-run environments may need playwright-cli workspace initialization
+        # so the CLI can discover installed browser channels like Chrome/Edge.
+        if ($errorText -match 'not installed|browser .* is not installed') {
+            Write-Warning "Browser channel not ready. Running playwright-cli install and retrying once..."
+            $null = Invoke-PlaywrightCli -Arguments @('install') -Session $Session
+
+            try {
+                $retryResult = Open-PlaywrightBrowser `
+                    -Url $Url `
+                    -Headed:$Headed `
+                    -Session $Session `
+                    -Persistent:$Persistent `
+                    -ProfilePath $ProfilePath `
+                    -BrowserType $BrowserType `
+                    -ViewportSize $ViewportSize
+
+                if ($retryResult) {
+                    Write-Host $retryResult
+                }
+
+                Write-SkillOutput -Title 'Browser' -Message 'Browser session opened after initialization.'
+                if ($Session) {
+                    Write-Host "Session: $Session"
+                }
+                exit 0
+            }
+            catch {
+                Write-Error -ErrorAction Continue "Start-Browser retry failed: $($_.Exception.Message)"
+                exit 1
+            }
+        }
+
+        Write-Error -ErrorAction Continue "Start-Browser failed: $errorText"
         exit 1
     }
 }

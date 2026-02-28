@@ -38,6 +38,8 @@ coverage/
 # Playwright test output
 tests/playwright/output/
 .playwright-mcp/
+.dev-server.log
+.dev-server.pid
 
 # .NET build artifacts
 tests/playwright/**/bin/

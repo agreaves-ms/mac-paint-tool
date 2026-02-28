@@ -132,6 +132,21 @@ Port 5174 avoids conflicts with Electron Forge's port 5173. Always use 5174 for 
 **What works**: Canvas drawing, UI interactions, tool selection, color picking
 **What does not work**: File dialogs, save/open, clipboard paste, menu event listeners
 
+### 3.1 Export requests must use browser capabilities
+
+When users ask for `export`, `save as`, `download`, `SVG`, or similar terms during Playwright sessions, interpret this as a browser automation task.
+
+In standalone mode:
+
+* Do not rely on Electron menu or `window.electronAPI` export paths.
+* Generate export data in page context (`evaluate` or `run-code`).
+* Trigger a browser download and verify the artifact exists.
+
+SVG-specific guidance:
+
+* Build SVG in browser context (for example, wrap canvas data URL in `<svg><image .../></svg>` when vector primitives are unavailable).
+* Download as `.svg` via Blob URL + anchor click.
+
 ### 4. Canvas testing via evaluate
 
 For drawing on the canvas, use `page.evaluate()` to call Canvas 2D API directly:
@@ -169,11 +184,29 @@ await page.evaluate(() => {
 });
 ```
 
-Downloaded files land in `.playwright-mcp/` directory.
+Downloaded files land in `.playwright-cli/` directory.
 
 ---
 
 ## Agent-Specific Best Practices
+
+### 0. Run long-lived commands non-blocking
+
+From agent tool environments, launch these as background/non-blocking steps:
+
+* Dev server startup
+* Browser startup
+
+Then continue with action commands (`snapshot`, `eval`, `screenshot`) in subsequent commands.
+
+### 0.1 Verify headed mode for visible-browser tasks
+
+If user expects to see the browser, launch with `-Headed` and validate session state:
+
+```powershell
+./scripts/Start-Browser.ps1 -Url "http://localhost:5174" -Session "visible" -Headed
+playwright-cli list  # confirm headed: true
+```
 
 ### 1. Snapshot before interact
 

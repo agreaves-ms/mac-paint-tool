@@ -40,10 +40,32 @@ Install Playwright using the provided script:
 Install Playwright, start a dev server, open a browser, take a screenshot:
 
     ./scripts/Install-Playwright.ps1
-    ./scripts/Start-DevServer.ps1 -Port 5174
+    ./scripts/Start-DevServer.ps1 -Command "npm run dev -- --port 5174" -Port 5174
     ./scripts/Start-Browser.ps1 -Url "http://localhost:5174" -Headed
     ./scripts/Take-Screenshot.ps1 -Filename "page.png"
     ./scripts/Stop-Browser.ps1
+
+## Agent Execution Rules (Required)
+
+When using this skill from an agent runtime:
+
+* Run long-lived commands in the background (non-blocking):
+    * Dev server startup (`Start-DevServer.ps1`)
+    * Browser startup (`Start-Browser.ps1`)
+* For user-visible browser interaction, always launch with `-Headed`.
+* After launching, verify headed state with `playwright-cli list` and confirm `headed: true`.
+* If a task mentions export terms such as `export`, `save as`, `download`, `SVG`, or `PNG`, treat it as a browser automation requirement first.
+* In standalone mode (`http://localhost:5174`), satisfy export requests with browser-available APIs (for example, `canvas.toDataURL()`, Blob download links, in-page serialization) instead of Electron IPC/menu handlers.
+
+### Export Semantics in Standalone Mode
+
+`window.electronAPI` is unavailable in standalone mode, so menu-triggered Electron exports do not apply.
+
+For SVG requests in Playwright automation:
+
+1. Generate SVG content in the page context (`evaluate`/`run-code`).
+2. Trigger a browser download (anchor + Blob URL).
+3. Verify the downloaded artifact exists before finishing.
 
 Run Playwright tests:
 
@@ -64,10 +86,16 @@ Run Playwright tests:
 
 | Parameter      | Flag              | Default                      | Description                                  |
 | -------------- | ----------------- | ---------------------------- | -------------------------------------------- |
-| Port           | `-Port`           | `5174`                       | Port for the Vite dev server                 |
-| Config         | `-Config`         | `vite.renderer.config.ts`    | Vite config file path                        |
+| Command        | `-Command`        | (none, required)             | Shell command to start the server            |
+| Port           | `-Port`           | `5174`                       | Port for readiness checking                  |
 | Wait           | `-Wait`           | `$true`                      | Wait until server is ready before returning  |
 | Timeout        | `-TimeoutSeconds` | `30`                         | Seconds to wait for server readiness         |
+
+### Stop-DevServer
+
+| Parameter    | Flag           | Default  | Description                                   |
+| ------------ | -------------- | -------- | --------------------------------------------- |
+| Port         | `-Port`        | `5174`   | Port of the dev server to stop                |
 
 ### Start-Browser
 
@@ -77,8 +105,8 @@ Run Playwright tests:
 | Headed         | `-Headed`         | `$false`     | Open browser in headed (visible) mode          |
 | Session        | `-Session`        | (none)       | Named session for isolation                    |
 | Persistent     | `-Persistent`     | `$false`     | Use persistent browser profile                 |
-| Profile        | `-Profile`        | (none)       | Path to browser profile directory              |
-| Browser        | `-BrowserType`    | `chromium`   | Browser engine: chromium, firefox, webkit      |
+| Profile        | `-ProfilePath`    | (none)       | Path to browser profile directory              |
+| Browser        | `-BrowserType`    | `chrome`     | Browser/channel: chrome (or chromium alias), msedge, firefox, webkit |
 | Viewport       | `-ViewportSize`   | `1280x720`   | Viewport dimensions (WIDTHxHEIGHT)            |
 
 ### Stop-Browser
@@ -135,14 +163,20 @@ Run Playwright tests:
 
 ### Dev Server Management
 
-    # Start Vite dev server on default port 5174
-    ./scripts/Start-DevServer.ps1
+    # Start dev server with an npm script
+    ./scripts/Start-DevServer.ps1 -Command "npm run dev -- --port 5174"
 
-    # Start on custom port with custom config
-    ./scripts/Start-DevServer.ps1 -Port 3000 -Config "vite.config.ts"
+    # Start with a custom command and port
+    ./scripts/Start-DevServer.ps1 -Command "npx vite --config vite.renderer.config.ts --port 3000" -Port 3000
 
     # Start without waiting for readiness
-    ./scripts/Start-DevServer.ps1 -Wait:$false
+    ./scripts/Start-DevServer.ps1 -Command "node server.js" -Port 8080 -Wait:$false
+
+    # Stop the dev server
+    ./scripts/Stop-DevServer.ps1
+
+    # Stop a dev server on a custom port
+    ./scripts/Stop-DevServer.ps1 -Port 3000
 
 ### Browser Session Management
 
@@ -238,13 +272,15 @@ Run Playwright tests:
 Agents using this skill follow this interaction pattern:
 
 1. **Install**: Run `Install-Playwright.ps1` if Playwright is not installed
-2. **Start server**: Run `Start-DevServer.ps1` to serve the web app
+2. **Start server**: Run `Start-DevServer.ps1 -Command "<your start command>"` to serve the web app
 3. **Open browser**: Run `Start-Browser.ps1 -Url "http://localhost:5174" -Headed`
-4. **Snapshot**: Run `Invoke-BrowserAction.ps1 -Action snapshot` to get element refs
-5. **Interact**: Use `Invoke-BrowserAction.ps1` with refs from snapshot
-6. **Screenshot**: Run `Take-Screenshot.ps1 -Filename "result.png"` to capture state
-7. **Close**: Run `Stop-Browser.ps1` to clean up
-8. **Stop server**: Terminate the dev server process
+4. **Verify headed mode**: Run `playwright-cli list` and confirm the session reports `headed: true`
+5. **Snapshot**: Run `Invoke-BrowserAction.ps1 -Action snapshot` to get element refs
+6. **Interact**: Use `Invoke-BrowserAction.ps1` with refs from snapshot
+7. **Export if requested**: Use browser APIs in `eval`/`run-code` to create/download files (including SVG)
+8. **Screenshot**: Run `Take-Screenshot.ps1 -Filename "result.png"` to capture state
+9. **Close**: Run `Stop-Browser.ps1` to clean up
+10. **Stop server**: Run `Stop-DevServer.ps1` to stop the dev server
 
 Key rules:
 
@@ -252,6 +288,9 @@ Key rules:
 * Use **named sessions** (`-Session`) when managing multiple browsers
 * **Close browsers** when done to prevent zombie processes
 * For this project, use port **5174** to avoid conflicts with Electron Forge's port 5173
+* In agent tool execution, keep server/browser startup non-blocking and continue with follow-up commands
+* For visual/manual verification tasks, require headed mode and verify it explicitly
+* For export tasks in standalone mode, use browser-only export flows rather than Electron IPC
 
 ## Templates
 
@@ -277,10 +316,12 @@ For detailed feature documentation covering all 18 Playwright categories:
 | ------------------------------------ | -------------------------------------- | ------------------------------------------------------------- |
 | `npm: command not found`             | Node.js not installed                  | Install Node.js 18+ from nodejs.org                           |
 | `playwright-cli: command not found`  | CLI not installed                      | Run `./scripts/Install-Playwright.ps1`                        |
-| Browser fails to launch              | Browser binaries not downloaded        | Run `./scripts/Install-Playwright.ps1 -InstallBrowsers`       |
+| Browser fails to launch              | CLI workspace not initialized / wrong browser channel default | Run `playwright-cli install`, or use `./scripts/Start-Browser.ps1 -BrowserType chrome` |
 | Dev server hangs on startup          | Port already in use                    | Kill process on port: `lsof -i :5174` and kill PID            |
 | Snapshot returns empty               | Page not loaded                        | Wait for navigation to complete before taking snapshot         |
 | Element refs not found               | Refs changed after DOM update          | Re-run snapshot to get fresh refs                             |
-| `page.goto` times out                | Using Electron Forge port (5173)       | Use standalone Vite server on port 5174 instead               |
+| `page.goto` times out                | Using a framework-specific dev port    | Use a standalone dev server on a dedicated test port instead   |
 | `electronAPI` is undefined           | Running outside Electron shell         | Expected in standalone mode — test canvas/UI only             |
+| User cannot see browser window       | Browser session launched headless      | Start with `-Headed` and verify with `playwright-cli list` (`headed: true`) |
+| SVG export did not occur             | Tried Electron export path in standalone mode | Build/download SVG inside browser context (`eval`/`run-code`) |
 | Tests fail with viewport clipping    | Default viewport too small             | Use `-ViewportSize "1400x1100"` for full canvas visibility    |

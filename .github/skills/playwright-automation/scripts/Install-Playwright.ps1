@@ -19,6 +19,11 @@ Install playwright and @playwright/test as dev dependencies in the current proje
 .PARAMETER InstallBrowsers
 Download Playwright browser binaries. Defaults to true.
 
+.PARAMETER InitializeCliWorkspace
+Run `playwright-cli install` to initialize workspace config and discover
+locally installed browser channels (for example Chrome and Edge).
+Defaults to true.
+
 .EXAMPLE
 ./Install-Playwright.ps1
 Installs the CLI globally and downloads browsers.
@@ -41,7 +46,10 @@ param(
     [switch]$InstallApi,
 
     [Parameter()]
-    [bool]$InstallBrowsers = $true
+    [bool]$InstallBrowsers = $true,
+
+    [Parameter()]
+    [bool]$InitializeCliWorkspace = $true
 )
 
 $ErrorActionPreference = 'Stop'
@@ -111,6 +119,32 @@ System.Void
     }
 }
 
+function Initialize-PlaywrightCliWorkspace {
+    <#
+.SYNOPSIS
+Initializes playwright-cli workspace and browser channel discovery.
+.OUTPUTS
+System.Void
+#>
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    [OutputType([void])]
+    param()
+
+    if (-not (Test-CommandAvailable 'playwright-cli')) {
+        Write-Warning 'playwright-cli is not available; skipping workspace initialization.'
+        return
+    }
+
+    if ($PSCmdlet.ShouldProcess('playwright-cli workspace', 'Initialize via playwright-cli install')) {
+        Write-SkillOutput -Title 'Install' -Message 'Initializing playwright-cli workspace...'
+        & playwright-cli install
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Failed to initialize playwright-cli workspace.'
+        }
+        Write-SkillOutput -Title 'Install' -Message 'playwright-cli workspace initialized.'
+    }
+}
+
 #region Main Execution
 if ($MyInvocation.InvocationName -ne '.') {
     try {
@@ -128,6 +162,10 @@ if ($MyInvocation.InvocationName -ne '.') {
 
         if ($InstallBrowsers) {
             Install-PlaywrightBrowsers
+        }
+
+        if ($InitializeCliWorkspace) {
+            Initialize-PlaywrightCliWorkspace
         }
 
         Write-SkillOutput -Title 'Install' -Message 'Playwright installation complete.'
