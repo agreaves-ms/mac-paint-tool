@@ -12,7 +12,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "slow-test": "lsof -ti :5174 | xargs kill -9 2>/dev/null; npx vite --config vite.renderer.config.ts --port 5174 --strictPort & VITE_PID=$!; sleep 2 && dotnet test tests/playwright/MacPaintTool.Tests; TEST_EXIT=$?; kill $VITE_PID 2>/dev/null; exit $TEST_EXIT"
+    "slow-test": "lsof -ti :5174 | xargs kill -9 2>/dev/null; npx vite --config vite.renderer.config.ts --port 5174 --strictPort & VITE_PID=$!; READY=0; for i in $(seq 1 60); do if curl -sf http://localhost:5174 >/dev/null; then READY=1; break; fi; sleep 1; done; if [ \"$READY\" -ne 1 ]; then echo 'Vite did not become ready on :5174'; kill $VITE_PID 2>/dev/null; exit 1; fi; dotnet test tests/playwright/MacPaintTool.Tests; TEST_EXIT=$?; kill $VITE_PID 2>/dev/null; wait $VITE_PID 2>/dev/null; exit $TEST_EXIT"
   },
   "keywords": [],
   "author": {
@@ -30,6 +30,7 @@
     "@electron-forge/plugin-fuses": "^7.11.1",
     "@electron-forge/plugin-vite": "^7.11.1",
     "@electron/fuses": "^1.8.0",
+    "@playwright/cli": "^0.1.1",
     "@playwright/test": "^1.58.2",
     "@types/electron-squirrel-startup": "^1.0.2",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
@@ -37,6 +38,7 @@
     "electron": "40.6.1",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
+    "playwright": "^1.58.2",
     "typescript": "~5.7.0",
     "vite": "^5.4.21"
   },
