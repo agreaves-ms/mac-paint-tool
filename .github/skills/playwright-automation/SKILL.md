@@ -318,6 +318,12 @@ For detailed feature documentation covering all 18 Playwright categories:
 * [MCP → CLI → API mapping](references/api-mapping.md) — Translation table between approaches
 * [Pitfalls and best practices](references/pitfalls.md) — Common mistakes and project-specific guidance
 
+## Related Skills
+
+If you need to convert automation steps into Playwright .NET xUnit tests, continue with:
+
+* [Playwright .NET conversion skill](../playwright-dotnet-conversion/SKILL.md)
+
 ## Troubleshooting
 
 | Symptom                              | Cause                                  | Resolution                                                    |
