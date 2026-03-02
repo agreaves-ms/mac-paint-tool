@@ -64,7 +64,7 @@ engine.setEyedropperTool(eyedropperTool);
 const undoManager = new UndoManager(canvas.width, canvas.height);
 
 // UI Components
-const colorPicker = new ColorPicker(document.getElementById('color-panel')!);
+const colorPicker = new ColorPicker(document.getElementById('property-panel')!);
 const toolbar = new Toolbar(document.getElementById('toolbar')!);
 const propertyPanel = new PropertyPanel(document.getElementById('property-panel')!, {
   onLineSizeChange: (size) => {

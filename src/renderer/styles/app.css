@@ -9,7 +9,6 @@
   --toolbar-width: 48px;
   --property-panel-width: 200px;
   --status-bar-height: 24px;
-  --color-panel-height: 40px;
 }
 
 @media (prefers-color-scheme: light) {
@@ -64,10 +63,9 @@ html, body {
 #app {
   display: grid;
   grid-template-columns: var(--toolbar-width) 1fr var(--property-panel-width);
-  grid-template-rows: 1fr var(--color-panel-height) var(--status-bar-height);
+  grid-template-rows: 1fr var(--status-bar-height);
   grid-template-areas:
     "toolbar canvas property"
-    "toolbar color  property"
     "status  status status";
   height: 100vh;
   width: 100vw;
@@ -120,15 +118,7 @@ html, body {
   overflow-y: auto;
 }
 
-#color-panel {
-  grid-area: color;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  gap: 8px;
-}
+
 
 #status-bar {
   grid-area: status;
@@ -180,49 +170,153 @@ html, body {
   z-index: 10001;
 }
 
-/* Color Picker */
-.color-picker {
-  position: relative;
-  width: 32px;
-  height: 32px;
+/* Enhanced Color Picker */
+.cp-section {
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 4px;
 }
 
-.color-swatch {
-  position: absolute;
-  width: 20px;
-  height: 20px;
+.cp-swatch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.cp-swatch {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border-color);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.cp-swatch-active {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+.cp-swap-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.cp-swap-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.cp-hex-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.cp-hex-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.cp-hex-input {
+  width: 70px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: monospace;
+  padding: 2px 4px;
+  text-transform: lowercase;
+}
+
+.cp-hex-input:focus {
+  outline: 1px solid var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.cp-sl-container {
+  position: relative;
+  width: 170px;
+  height: 100px;
+  margin-bottom: 6px;
+  cursor: crosshair;
+}
+
+.cp-sl-canvas {
+  width: 170px;
+  height: 100px;
   border: 1px solid var(--border-color);
   border-radius: 2px;
-  overflow: hidden;
+  display: block;
 }
 
-.color-swatch input[type="color"] {
+.cp-sl-marker {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.cp-hue-container {
+  position: relative;
+  width: 170px;
+  height: 12px;
+  margin-bottom: 8px;
+  cursor: crosshair;
+}
+
+.cp-hue-canvas {
+  width: 170px;
+  height: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  display: block;
+}
+
+.cp-hue-marker {
+  position: absolute;
+  top: -2px;
+  width: 4px;
+  height: 16px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.5);
+  border-radius: 2px;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.cp-palette {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+}
+
+.cp-palette-cell {
   width: 100%;
-  height: 100%;
-  border: none;
-  padding: 0;
+  aspect-ratio: 1;
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
   cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
 }
 
-.color-swatch input[type="color"]::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-
-.color-swatch input[type="color"]::-webkit-color-swatch {
-  border: none;
-}
-
-.color-swatch-bg {
-  top: 8px;
-  left: 8px;
-}
-
-.color-swatch-fg {
-  top: 0;
-  left: 0;
-  z-index: 1;
+.cp-palette-cell:hover {
+  border-color: var(--accent-color);
+  transform: scale(1.15);
 }
 
 /* Toolbar buttons */
