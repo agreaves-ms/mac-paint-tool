@@ -533,8 +533,8 @@ html, body {
 
 .layer-item {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  gap: 2px;
   padding: 3px 4px;
   border-radius: 4px;
   cursor: pointer;
@@ -570,6 +570,103 @@ html, body {
 }
 
 .layer-name {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.layer-item-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.layer-controls-row {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0 0 22px;
+}
+
+.layer-item.active .layer-controls-row {
+  display: flex;
+}
+
+.layer-blend-select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 3px;
+  font-size: 10px;
+  padding: 1px 2px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.layer-blend-select:focus {
+  outline: 1px solid var(--accent-color);
+}
+
+.layer-opacity-slider {
+  flex: 1;
+  height: 14px;
+  cursor: pointer;
+}
+
+.layer-rename-input {
+  font-size: 11px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent-color);
+  color: var(--text-primary);
+  border-radius: 2px;
+  padding: 0 2px;
+  flex: 1;
+  outline: none;
+}
+
+/* Brush Preset Panel */
+.brush-preset-panel {
+  margin-top: 12px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 8px;
+}
+
+.brush-preview {
+  width: 100%;
+  height: 40px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.brush-preset-actions {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.brush-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brush-preset-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.brush-preset-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.brush-preset-name {
   font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;

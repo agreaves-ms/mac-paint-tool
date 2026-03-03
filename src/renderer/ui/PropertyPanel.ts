@@ -30,6 +30,9 @@ export interface PropertyCallbacks {
   onSymmetryEnabledChange?: (enabled: boolean) => void;
   onSymmetryAxisCountChange?: (count: number) => void;
   onSymmetryAxisTypeChange?: (type: string) => void;
+  onSpacingChange?: (spacing: number) => void;
+  onScatterChange?: (scatter: number) => void;
+  onRotationChange?: (rotation: number) => void;
 }
 
 export class PropertyPanel {
@@ -88,6 +91,19 @@ export class PropertyPanel {
   private symmetryAxisCountSlider!: HTMLInputElement;
   private symmetryAxisCountValue!: HTMLSpanElement;
 
+  // Brush advanced controls
+  private spacingSection!: HTMLElement;
+  private spacingSlider!: HTMLInputElement;
+  private spacingValue!: HTMLSpanElement;
+
+  private scatterSection!: HTMLElement;
+  private scatterSlider!: HTMLInputElement;
+  private scatterValue!: HTMLSpanElement;
+
+  private rotationSection!: HTMLElement;
+  private rotationSlider!: HTMLInputElement;
+  private rotationValue!: HTMLSpanElement;
+
   // Export quality controls
   private exportQualitySection!: HTMLElement;
   private exportQualitySlider!: HTMLInputElement;
@@ -110,6 +126,9 @@ export class PropertyPanel {
   private symmetryEnabled = false;
   private symmetryAxisCount = 2;
   private symmetryAxisType: 'mirror-h' | 'mirror-v' | 'rotational' = 'rotational';
+  private spacing = 25;
+  private scatterVal = 0;
+  private rotationVal = 0;
 
   constructor(container: HTMLElement, callbacks?: PropertyCallbacks) {
     this.container = container;
@@ -177,6 +196,47 @@ export class PropertyPanel {
     }
     this.brushPresetsSection.appendChild(presetsGroup);
     this.container.appendChild(this.brushPresetsSection);
+
+    // Spacing section (brush only)
+    this.spacingSection = this.createSection('Spacing');
+    this.spacingSlider = this.createSlider('spacing', 1, 100, this.spacing);
+    this.spacingValue = this.createValueDisplay(this.spacing);
+    this.spacingValue.textContent = `${this.spacing}%`;
+    const spacingRow = this.createSliderRow(this.spacingSlider, this.spacingValue);
+    this.spacingSection.appendChild(spacingRow);
+    this.spacingSlider.addEventListener('input', () => {
+      this.spacing = parseInt(this.spacingSlider.value, 10);
+      this.spacingValue.textContent = `${this.spacing}%`;
+      this.callbacks.onSpacingChange?.(this.spacing / 100);
+    });
+    this.container.appendChild(this.spacingSection);
+
+    // Scatter section (brush only)
+    this.scatterSection = this.createSection('Scatter');
+    this.scatterSlider = this.createSlider('scatter', 0, 50, this.scatterVal);
+    this.scatterValue = this.createValueDisplay(this.scatterVal);
+    const scatterRow = this.createSliderRow(this.scatterSlider, this.scatterValue);
+    this.scatterSection.appendChild(scatterRow);
+    this.scatterSlider.addEventListener('input', () => {
+      this.scatterVal = parseInt(this.scatterSlider.value, 10);
+      this.scatterValue.textContent = String(this.scatterVal);
+      this.callbacks.onScatterChange?.(this.scatterVal);
+    });
+    this.container.appendChild(this.scatterSection);
+
+    // Rotation section (brush only)
+    this.rotationSection = this.createSection('Rotation');
+    this.rotationSlider = this.createSlider('rotation', 0, 360, this.rotationVal);
+    this.rotationValue = this.createValueDisplay(this.rotationVal);
+    this.rotationValue.textContent = `${this.rotationVal}°`;
+    const rotationRow = this.createSliderRow(this.rotationSlider, this.rotationValue);
+    this.rotationSection.appendChild(rotationRow);
+    this.rotationSlider.addEventListener('input', () => {
+      this.rotationVal = parseInt(this.rotationSlider.value, 10);
+      this.rotationValue.textContent = `${this.rotationVal}°`;
+      this.callbacks.onRotationChange?.(this.rotationVal);
+    });
+    this.container.appendChild(this.rotationSection);
 
     // Tolerance section
     this.toleranceSection = this.createSection('Tolerance');
@@ -493,6 +553,9 @@ export class PropertyPanel {
     this.opacitySection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
     this.hardnessSection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
     this.brushPresetsSection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.spacingSection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.scatterSection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
+    this.rotationSection.style.display = BRUSH_TOOLS.includes(this.activeTool) ? '' : 'none';
     this.toleranceSection.style.display = this.activeTool === 'fill' ? '' : 'none';
     this.gradianceSection.style.display = this.activeTool === 'selection' ? '' : 'none';
     this.shapeModeSection.style.display = SHAPE_TOOLS.includes(this.activeTool) ? '' : 'none';
@@ -567,6 +630,28 @@ export class PropertyPanel {
     this.hardnessSlider.value = String(value);
     this.hardnessValue.textContent = `${value}%`;
     this.callbacks.onHardnessChange?.(value);
+  }
+
+  setSpacing(value: number): void {
+    const pct = Math.round(value * 100);
+    this.spacing = pct;
+    this.spacingSlider.value = String(pct);
+    this.spacingValue.textContent = `${pct}%`;
+    this.callbacks.onSpacingChange?.(value);
+  }
+
+  setScatter(value: number): void {
+    this.scatterVal = value;
+    this.scatterSlider.value = String(value);
+    this.scatterValue.textContent = String(value);
+    this.callbacks.onScatterChange?.(value);
+  }
+
+  setRotation(value: number): void {
+    this.rotationVal = value;
+    this.rotationSlider.value = String(value);
+    this.rotationValue.textContent = `${value}°`;
+    this.callbacks.onRotationChange?.(value);
   }
 
   onExportQualityChange(cb: (quality: number) => void): void {

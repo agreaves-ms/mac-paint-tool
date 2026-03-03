@@ -1,40 +1,46 @@
-import { type BrushEngine, type BrushEnginePreset } from '../tools/BrushEngine';
+import { type BrushTool, type BrushPreset } from '../tools/BrushTool';
 
 const STORAGE_KEY = 'mac-paint-brush-presets';
 
 export class BrushPresetPanel {
   private container: HTMLElement;
-  private engine: BrushEngine;
-  private presets: BrushEnginePreset[] = [];
+  private brushTool: BrushTool;
+  private presets: BrushPreset[] = [];
   private listEl!: HTMLElement;
   private previewCanvas!: HTMLCanvasElement;
+  private panelEl!: HTMLElement;
+  private onPresetApplied: ((preset: BrushPreset) => void) | null = null;
 
-  constructor(container: HTMLElement, engine: BrushEngine) {
+  constructor(container: HTMLElement, brushTool: BrushTool) {
     this.container = container;
-    this.engine = engine;
+    this.brushTool = brushTool;
     this.loadPresets();
     this.render();
   }
 
+  onPresetApply(callback: (preset: BrushPreset) => void): void {
+    this.onPresetApplied = callback;
+  }
+
   private render(): void {
-    const panel = document.createElement('div');
-    panel.className = 'brush-preset-panel';
+    this.panelEl = document.createElement('div');
+    this.panelEl.className = 'brush-preset-panel';
 
     const header = document.createElement('label');
     header.className = 'prop-label';
     header.textContent = 'Custom Brushes';
-    panel.appendChild(header);
+    this.panelEl.appendChild(header);
 
     // Preview
     this.previewCanvas = document.createElement('canvas');
     this.previewCanvas.width = 160;
     this.previewCanvas.height = 40;
     this.previewCanvas.className = 'brush-preview';
-    panel.appendChild(this.previewCanvas);
+    this.panelEl.appendChild(this.previewCanvas);
 
     // Buttons
     const actions = document.createElement('div');
-    actions.className = 'layer-actions';
+    actions.className = 'brush-preset-actions';
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'layer-action-btn';
@@ -45,24 +51,25 @@ export class BrushPresetPanel {
       this.saveCurrentPreset();
     });
     actions.appendChild(saveBtn);
-    panel.appendChild(actions);
+    this.panelEl.appendChild(actions);
 
     // Preset list
     this.listEl = document.createElement('div');
-    this.listEl.className = 'layer-list';
-    panel.appendChild(this.listEl);
+    this.listEl.className = 'brush-preset-list';
+    this.panelEl.appendChild(this.listEl);
 
-    this.container.appendChild(panel);
+    this.container.appendChild(this.panelEl);
     this.updateList();
     this.updatePreview();
   }
 
   private saveCurrentPreset(): void {
     const name = `Brush ${this.presets.length + 1}`;
-    const preset = this.engine.getPreset(name);
+    const preset = this.brushTool.getPreset(name);
     this.presets.push(preset);
     this.persistPresets();
     this.updateList();
+    this.updatePreview();
   }
 
   deletePreset(index: number): void {
@@ -75,10 +82,10 @@ export class BrushPresetPanel {
     this.listEl.innerHTML = '';
     this.presets.forEach((preset, index) => {
       const item = document.createElement('div');
-      item.className = 'layer-item';
+      item.className = 'brush-preset-item';
 
       const nameEl = document.createElement('span');
-      nameEl.className = 'layer-name';
+      nameEl.className = 'brush-preset-name';
       nameEl.textContent = preset.name;
 
       const deleteBtn = document.createElement('button');
@@ -92,7 +99,8 @@ export class BrushPresetPanel {
       });
 
       item.addEventListener('pointerdown', () => {
-        this.engine.applyPreset(preset);
+        this.brushTool.applyPreset(preset);
+        this.onPresetApplied?.(preset);
         this.updatePreview();
       });
 
@@ -108,11 +116,28 @@ export class BrushPresetPanel {
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, this.previewCanvas.width, this.previewCanvas.height);
 
-    this.engine.resetAccumulator();
+    // Draw preview stripe using brush tool parameters
     const y = this.previewCanvas.height / 2;
-    for (let x = 20; x < this.previewCanvas.width - 20; x += 3) {
-      this.engine.stamp(ctx, x, y, '#ffffff');
+    const radius = Math.min(this.brushTool.lineWidth, 16) / 2;
+    const spacing = Math.max(1, radius * 2 * this.brushTool.spacing);
+    const hardness = this.brushTool.hardness;
+    ctx.globalAlpha = this.brushTool.opacity / 100;
+
+    for (let x = 20; x < this.previewCanvas.width - 20; x += spacing) {
+      if (hardness < 100) {
+        const hardnessRatio = hardness / 100;
+        const gradient = ctx.createRadialGradient(x, y, radius * hardnessRatio, x, y, radius);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = gradient;
+      } else {
+        ctx.fillStyle = '#ffffff';
+      }
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
     }
+    ctx.globalAlpha = 1;
   }
 
   private loadPresets(): void {
@@ -128,5 +153,14 @@ export class BrushPresetPanel {
 
   private persistPresets(): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.presets));
+  }
+
+  show(): void {
+    this.panelEl.style.display = '';
+    this.updatePreview();
+  }
+
+  hide(): void {
+    this.panelEl.style.display = 'none';
   }
 }

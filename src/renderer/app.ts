@@ -21,7 +21,6 @@ import { PropertyPanel } from './ui/PropertyPanel';
 import { LayerPanel } from './ui/LayerPanel';
 import { NewDocumentDialog } from './ui/NewDocumentDialog';
 import { ResizeDialog } from './ui/ResizeDialog';
-import { BrushEngine } from './tools/BrushEngine';
 import { BrushPresetPanel } from './ui/BrushPresetPanel';
 import { CurvesDialog } from './ui/CurvesDialog';
 import { Adjustments } from './canvas/Adjustments';
@@ -53,7 +52,6 @@ const curveTool = new CurveTool();
 const lassoTool = new LassoTool();
 const gradientTool = new GradientTool();
 const colorSelection = new ColorSelection(canvas);
-const brushEngine = new BrushEngine();
 const curvesDialog = new CurvesDialog();
 
 // Wire eyedropper and selection tool into PaintEngine
@@ -124,6 +122,15 @@ const propertyPanel = new PropertyPanel(document.getElementById('property-panel'
     brushTool.symmetryAxisType = type as 'mirror-h' | 'mirror-v' | 'rotational';
     engine.drawSymmetryOverlay(brushTool.symmetryEnabled, type, brushTool.symmetryAxisCount);
   },
+  onSpacingChange: (spacing) => {
+    brushTool.spacing = spacing;
+  },
+  onScatterChange: (scatter) => {
+    brushTool.scatter = scatter;
+  },
+  onRotationChange: (rotation) => {
+    brushTool.rotation = rotation;
+  },
 });
 
 propertyPanel.onExportQualityChange((q) => {
@@ -173,6 +180,12 @@ function selectTool(name: string): void {
   if (tool) {
     engine.setActiveTool(tool);
     propertyPanel.updateForTool(name);
+  }
+  // Show/hide brush preset panel based on tool
+  if (name === 'brush') {
+    brushPresetPanel.show();
+  } else {
+    brushPresetPanel.hide();
   }
   // Clear symmetry overlay when switching away from brush
   if (name !== 'brush') {
@@ -485,7 +498,15 @@ engine.initGrid(canvasContainer);
 new LayerPanel(document.getElementById('property-panel')!, layerManager);
 
 // Brush preset panel
-new BrushPresetPanel(document.getElementById('property-panel')!, brushEngine);
+const brushPresetPanel = new BrushPresetPanel(document.getElementById('property-panel')!, brushTool);
+brushPresetPanel.onPresetApply((preset) => {
+  propertyPanel.setLineSize(preset.size);
+  propertyPanel.setOpacity(preset.opacity);
+  propertyPanel.setHardness(preset.hardness);
+  if (preset.spacing !== undefined) propertyPanel.setSpacing(preset.spacing);
+  if (preset.scatter !== undefined) propertyPanel.setScatter(preset.scatter);
+  if (preset.rotation !== undefined) propertyPanel.setRotation(preset.rotation);
+});
 
 // Set default tool
 selectTool('brush');

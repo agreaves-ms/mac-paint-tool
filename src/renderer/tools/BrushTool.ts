@@ -5,6 +5,9 @@ export interface BrushPreset {
   size: number;
   opacity: number;
   hardness: number;
+  spacing?: number;
+  scatter?: number;
+  rotation?: number;
 }
 
 export const BRUSH_PRESETS: BrushPreset[] = [
@@ -21,6 +24,9 @@ export class BrushTool implements Tool {
   color = '#000000';
   opacity = 100;
   hardness = 100;
+  spacing = 0.25;
+  scatter = 0;
+  rotation = 0;
 
   // Symmetry
   symmetryEnabled = false;
@@ -154,11 +160,44 @@ export class BrushTool implements Tool {
     this.lineWidth = preset.size;
     this.opacity = preset.opacity;
     this.hardness = preset.hardness;
+    if (preset.spacing !== undefined) this.spacing = preset.spacing;
+    if (preset.scatter !== undefined) this.scatter = preset.scatter;
+    if (preset.rotation !== undefined) this.rotation = preset.rotation;
+  }
+
+  getPreset(name: string): BrushPreset {
+    return {
+      name,
+      size: this.lineWidth,
+      opacity: this.opacity,
+      hardness: this.hardness,
+      spacing: this.spacing,
+      scatter: this.scatter,
+      rotation: this.rotation,
+    };
   }
 
   private stampAt(ctx: CanvasRenderingContext2D, x: number, y: number, width?: number): void {
     const radius = (width ?? this.lineWidth) / 2;
     if (radius <= 0) return;
+
+    // Apply scatter offset
+    let sx = x;
+    let sy = y;
+    if (this.scatter > 0) {
+      sx += (Math.random() - 0.5) * 2 * this.scatter;
+      sy += (Math.random() - 0.5) * 2 * this.scatter;
+    }
+
+    ctx.save();
+
+    // Apply rotation
+    if (this.rotation > 0) {
+      const angle = Math.random() * this.rotation * (Math.PI / 180);
+      ctx.translate(sx, sy);
+      ctx.rotate(angle);
+      ctx.translate(-sx, -sy);
+    }
 
     if (this.hardness < 100) {
       const hardnessRatio = this.hardness / 100;
@@ -166,7 +205,7 @@ export class BrushTool implements Tool {
       const g = parseInt(this.color.slice(3, 5), 16);
       const b = parseInt(this.color.slice(5, 7), 16);
 
-      const gradient = ctx.createRadialGradient(x, y, radius * hardnessRatio, x, y, radius);
+      const gradient = ctx.createRadialGradient(sx, sy, radius * hardnessRatio, sx, sy, radius);
       gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`);
       gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
 
@@ -176,8 +215,9 @@ export class BrushTool implements Tool {
     }
 
     ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.arc(sx, sy, radius, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
   }
 
   private stampLine(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, width?: number): void {
@@ -185,7 +225,7 @@ export class BrushTool implements Tool {
     const dx = x1 - x0;
     const dy = y1 - y0;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const spacing = Math.max(1, effectiveWidth / 4);
+    const spacing = Math.max(1, effectiveWidth * this.spacing);
 
     if (dist < 0.1) {
       this.stampAt(ctx, x1, y1, effectiveWidth);

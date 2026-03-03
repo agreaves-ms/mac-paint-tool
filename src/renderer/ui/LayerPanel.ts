@@ -35,10 +35,14 @@ export class LayerPanel {
       this.layerManager.removeLayer(this.layerManager.getActiveLayerId());
     });
     const flattenBtn = this.createActionBtn('⊟', 'Flatten all', () => {
-      this.layerManager.flattenAll();
+      if (confirm('Flatten all layers? This cannot be undone.')) {
+        this.layerManager.flattenAll();
+      }
     });
     const mergeBtn = this.createActionBtn('↓', 'Merge down', () => {
-      this.layerManager.mergeDown();
+      if (confirm('Merge this layer down? This cannot be undone.')) {
+        this.layerManager.mergeDown();
+      }
     });
 
     actions.appendChild(addBtn);
@@ -119,6 +123,31 @@ export class LayerPanel {
     mainRow.appendChild(eyeBtn);
     mainRow.appendChild(thumb);
     mainRow.appendChild(nameEl);
+
+    // Double-click to rename
+    nameEl.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'layer-rename-input';
+      input.value = layer.name;
+      const commitRename = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== layer.name) {
+          this.layerManager.renameLayer(layer.id, newName);
+        }
+        this.updateList();
+      };
+      input.addEventListener('blur', commitRename);
+      input.addEventListener('keydown', (ke) => {
+        if (ke.key === 'Enter') { ke.preventDefault(); input.blur(); }
+        if (ke.key === 'Escape') { input.value = layer.name; input.blur(); }
+      });
+      nameEl.replaceWith(input);
+      input.focus();
+      input.select();
+    });
+
     item.appendChild(mainRow);
 
     // Controls row: blend mode + opacity
