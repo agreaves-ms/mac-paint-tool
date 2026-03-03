@@ -1,0 +1,17 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": ["typescript"],
+  "files.exclude": {
+    "**/.vite": true,
+    "**/out": true,
+    "**/dist": true
+  },
+  "search.exclude": {
+    "tests/playwright/MacPaintTool.Tests/bin": true,
+    "tests/playwright/MacPaintTool.Tests/obj": true
+  }
+}

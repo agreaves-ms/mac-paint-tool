@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "ise-hve-essentials.hve-core",
+    "ise-hve-essentials.hve-coding-standards",
+    "ise-hve-essentials.hve-github",
+    "GitHub.vscode-pull-request-github",
+    "dbaeumer.vscode-eslint",
+    "ms-dotnettools.csharp",
+    "ms-dotnettools.csdevkit",
+    "ms-playwright.playwright"
+  ]
+}

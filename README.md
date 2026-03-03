@@ -210,7 +210,21 @@ After your first contribution, here are some ways to keep the momentum going:
 
 ### Dev Container
 
-> **Coming soon.** A dev container configuration will be added to streamline the development environment setup. Stay tuned.
+This project includes a dev container configuration that provides a complete development environment with Node.js 22, .NET 10 SDK, and PowerShell 7+.
+
+**Using VS Code:**
+
+1. Install the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.
+2. Open the repository in VS Code.
+3. When prompted, click **Reopen in Container** — or use the command palette: `Dev Containers: Reopen in Container`.
+4. The container installs all dependencies automatically (`npm install`, `dotnet restore`, and Electron's native Linux libraries).
+
+**Using GitHub Codespaces:**
+
+1. Navigate to the repository on GitHub.
+2. Click **Code** → **Codespaces** → **Create codespace on main**.
+
+The dev container includes all recommended VS Code extensions (HVE Core, ESLint, C# Dev Kit, Playwright) and forwards port 5174 for the Vite dev server.
 
 ### Install Dependencies
 

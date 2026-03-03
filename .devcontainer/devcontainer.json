@@ -1,0 +1,32 @@
+{
+  "name": "Mac Paint Tool",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "10.0"
+    },
+    "ghcr.io/devcontainers/features/powershell:1": {}
+  },
+  "forwardPorts": [5174],
+  "portsAttributes": {
+    "5174": {
+      "label": "Vite Dev Server",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y libgtk-3-0 libnotify-dev libnss3 libxss1 libasound2 libxtst6 xauth xvfb libgbm1 libdrm2 && npm install && dotnet restore tests/playwright/MacPaintTool.Tests/MacPaintTool.Tests.csproj",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ise-hve-essentials.hve-core",
+        "ise-hve-essentials.hve-coding-standards",
+        "ise-hve-essentials.hve-github",
+        "GitHub.vscode-pull-request-github",
+        "dbaeumer.vscode-eslint",
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit",
+        "ms-playwright.playwright"
+      ]
+    }
+  }
+}
