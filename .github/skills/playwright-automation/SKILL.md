@@ -59,6 +59,32 @@ When using this skill from an agent runtime:
 * For single-expression JavaScript, use `Invoke-BrowserAction.ps1 -Action eval`. For multi-statement scripts (complex drawing, multi-step DOM manipulation), use `playwright-cli run-code "async (page) => { ... }"` directly — `eval` wraps code as `() => (code)` and cannot handle statements or declarations.
 * Prefer direct Canvas 2D API calls via `run-code` over simulating pointer events for complex drawing — direct context drawing produces deterministic, pixel-accurate results without tool state dependencies.
 
+### Credentials Policy (Mandatory)
+
+* **NEVER hardcode usernames, passwords, tokens, or secrets in any file** — not in scripts, templates, SKILL files, tracking files, or commit messages.
+* **Always read credentials from environment variables** at runtime. Use `$env:APP_USERNAME` and `$env:APP_PASSWORD` (not `$env:username` — that's a Windows built-in). In Playwright code, use `process.env.APP_USERNAME` and `process.env.APP_PASSWORD`.
+* **If environment variables are not set, prompt the user** — ask the user to provide credentials or set them before proceeding. Never assume or guess credential values.
+* **Do not log or echo credentials** in terminal output. When filling password fields, pass values directly without printing them.
+* Example workflow for login automation:
+    ```
+    # User sets env vars (agent should ask user to do this if not set)
+    $env:APP_USERNAME = "<ask user>"
+    $env:APP_PASSWORD = "<ask user>"
+
+    # Agent reads from env vars when filling fields
+    playwright-cli fill <username-ref> $env:APP_USERNAME
+    playwright-cli fill <password-ref> $env:APP_PASSWORD
+    ```
+
+### CLI Command Pitfalls (Critical)
+
+* **The CLI subcommand to launch a browser is `open`, NOT `browser`**. Running `playwright-cli browser` will hang indefinitely — it is not a valid command. Correct: `playwright-cli open [url] --browser chrome --headed`.
+* **`--viewport` is NOT a valid flag on `open`**. The `open` command does not accept viewport options. To set viewport size, open the browser first, then run `playwright-cli resize <width> <height>` as a separate command.
+* **SSO/OAuth sites cause browser context to close** — When navigating to URLs that perform SSO redirects (e.g., corporate login pages), the default in-memory browser context gets destroyed during cross-origin navigation, producing `Error: page._snapshotForAI: Target page, context or browser has been closed`. **Fix:** Always use `--persistent --profile ".playwright-cli/browser-profile"` when opening browsers that will visit SSO/auth-redirect sites.
+* **Open the browser first, then navigate** — For SSO sites, open the browser to `about:blank` with `--persistent --profile`, then use `playwright-cli goto <url>` as a separate step.
+* **`$env:username` is a Windows built-in environment variable** — On Windows, `$env:username` always resolves to the current Windows login user. **Use a different variable name** (e.g., `$env:APP_USERNAME`) for credentials.
+* **`screenshot` command produces timestamped filenames** — The `screenshot` command saves files with auto-generated timestamped names, not a predictable name. Read the output to get the actual filename, then copy/rename it.
+
 ### Export Semantics in Standalone Mode
 
 `window.electronAPI` is unavailable in standalone mode, so menu-triggered Electron exports do not apply.
@@ -191,6 +217,14 @@ Run Playwright tests:
 
     # Open with specific browser and viewport
     ./scripts/Start-Browser.ps1 -Url "http://localhost:5174" -BrowserType firefox -ViewportSize "1400x1100"
+
+    # Open with persistent profile for SSO/auth-redirect sites
+    # Step 1: Open browser to blank page with persistent profile
+    playwright-cli open --browser chrome --headed --persistent --profile ".playwright-cli/browser-profile"
+    # Step 2: Resize viewport (--viewport is NOT supported on open)
+    playwright-cli resize 1400 900
+    # Step 3: Navigate to the SSO site
+    playwright-cli goto "https://example.com/login"
 
     # Close specific session
     ./scripts/Stop-Browser.ps1 -Session "testing"
@@ -335,6 +369,11 @@ If you need to convert automation steps into Playwright .NET xUnit tests, contin
 | Snapshot returns empty               | Page not loaded                        | Wait for navigation to complete before taking snapshot         |
 | Element refs not found               | Refs changed after DOM update          | Re-run snapshot to get fresh refs                             |
 | `page.goto` times out                | Using a framework-specific dev port    | Use a standalone dev server on a dedicated test port instead   |
+| `page._snapshotForAI: Target page, context or browser has been closed` | SSO redirect or cross-origin navigation closed the in-memory browser context | Use `--persistent --profile ".playwright-cli/browser-profile"` when opening the browser. Open to `about:blank` first, then `goto` the SSO URL separately |
+| `playwright-cli browser` hangs indefinitely | `browser` is not a valid subcommand | Use `playwright-cli open` instead — `open` is the correct command to launch a browser |
+| `error: unknown '--viewport' option` | `--viewport` is not supported on `open` | Use `playwright-cli resize <w> <h>` after opening the browser |
+| `$env:username` resolves to wrong value | `USERNAME` is a built-in Windows environment variable | Use a different variable name like `$env:APP_USERNAME` for custom credentials |
+| Screenshot saved with timestamped name | `screenshot` command auto-generates filenames | Read the output path and copy/rename the file to your desired name |
 | `electronAPI` is undefined           | Running outside Electron shell         | Expected in standalone mode — test canvas/UI only             |
 | User cannot see browser window       | Browser session launched headless      | Start with `-Headed` and verify with `playwright-cli list` (`headed: true`) |
 | SVG export did not occur             | Tried Electron export path in standalone mode | Build/download SVG inside browser context (`eval`/`run-code`) |

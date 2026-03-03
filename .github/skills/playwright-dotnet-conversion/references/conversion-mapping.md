@@ -43,9 +43,34 @@ Avoid fixed delays:
 await Task.Delay(2000);
 ```
 
+## Persistent Context Patterns (SSO/Auth Sites)
+
+These patterns apply when inheriting from `PersistentBrowserTestBase` instead of `PageTest`:
+
+| Automation intent | Playwright .NET code |
+| --- | --- |
+| Read credential from env var | `var username = Environment.GetEnvironmentVariable("APP_USERNAME");` |
+| Guard missing credentials | `Assert.False(string.IsNullOrEmpty(username), "APP_USERNAME env var must be set");` |
+| Wait for SSO redirect | `await Page.WaitForURLAsync("**/login", new() { Timeout = 15000 });` |
+| Wait for post-login redirect | `await Page.WaitForURLAsync(url => !url.Contains("/login"), new() { Timeout = 30000 });` |
+| Assert button enabled before click | `await Expect(loginButton).ToBeEnabledAsync();` |
+| Assert no error text visible | `await Expect(Page.GetByText("Login Unsuccessful")).Not.ToBeVisibleAsync();` |
+| Save screenshot to specific file | `await Page.ScreenshotAsync(new() { Path = "login.png" });` |
+
+Base class selection guide:
+
+| Scenario | Base class |
+| --- | --- |
+| Localhost SPA, no auth | `PageTest` |
+| SSO/OAuth redirect during auth | `PersistentBrowserTestBase` |
+| Site that needs cookies across redirects | `PersistentBrowserTestBase` |
+| Tests needing headed mode for visual check | Either — set `HEADED=1` env var |
+
 ## Test Design Guidance
 
 * Keep each test scoped to one behavior outcome
 * Minimize shared mutable state between tests
 * Use explicit test names with behavior and condition
 * Prefer helper methods over inheritance-heavy utility layers
+* For persistent context tests, never hardcode credentials — read from environment variables
+* Clean up is handled by `PersistentBrowserTestBase.DisposeAsync()` — do not manually delete profile dirs
