@@ -49,6 +49,10 @@ The **GitHub MCP Server** enables Copilot agents to interact with GitHub directl
 
 No extensions are required for the GitHub MCP server — it's configured at the project level.
 
+![VS Code — MCP Server Configuration](docs/images/contributing-vscode-mcp-config.png)
+
+The `.vscode/mcp.json` file defines the GitHub MCP server endpoint. VS Code discovers this configuration automatically when you open the workspace.
+
 Once the repository is set up, running `npm run dev` launches the standalone Vite dev server. Here's the Mac Paint Tool interface you'll be working with:
 
 ![Mac Paint Tool — App Overview](docs/images/contributing-app-overview.png)
@@ -66,6 +70,10 @@ Install the extension:
 3. Search for **HVE Core - GitHub Backlog Management**.
 4. Click **Install**.
 
+![VS Code — HVE Core Extensions](docs/images/contributing-vscode-extensions.png)
+
+The Extensions view shows all available HVE Core extensions. Install **HVE Core** (the main RPI workflow) and **HVE Core - GitHub Backlog Management** at a minimum.
+
 #### 4.1 Assign Yourself to an Issue
 
 1. Open Copilot Chat in Agent mode.
@@ -74,6 +82,8 @@ Install the extension:
    ```text
    Find unassigned issues in agreaves-ms/mac-paint-tool that I could work on
    ```
+
+   ![VS Code — Copilot Chat Issue Query](docs/images/contributing-vscode-copilot-issue.png)
 
 3. Once you find an issue you'd like to tackle, ask Copilot to assign it to you:
 
@@ -130,6 +140,8 @@ Open the downloaded issue markdown file, then run each phase in sequence:
 /task-research This feature described in this document
 ```
 
+![VS Code — Task Research Prompt](docs/images/contributing-vscode-task-research.png)
+
 This produces a research document in `.copilot-tracking/research/` with scope analysis, evaluated alternatives, and a recommended approach.
 
 **Plan**
@@ -184,6 +196,8 @@ For features that are clearly scoped and well-defined, you can run the entire Re
 ```text
 /rpi This feature in this document
 ```
+
+![VS Code — RPI Full Flow Prompt](docs/images/contributing-vscode-rpi.png)
 
 RPI will autonomously research the codebase, create a plan, implement the changes, and review the results. For larger features or tasks with many unknowns, the step-by-step process in 5.1 may produce better results. For straightforward tasks, this is the fastest path.
 
