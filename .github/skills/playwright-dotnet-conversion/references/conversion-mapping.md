@@ -65,6 +65,7 @@ Base class selection guide:
 | SSO/OAuth redirect during auth | `PersistentBrowserTestBase` |
 | Site that needs cookies across redirects | `PersistentBrowserTestBase` |
 | Tests needing headed mode for visual check | Either — set `HEADED=1` env var |
+| SSO login once, share across all test classes | `ICollectionFixture<FixtureClass>` via constructor injection |
 
 ## Test Design Guidance
 
@@ -74,3 +75,16 @@ Base class selection guide:
 * Prefer helper methods over inheritance-heavy utility layers
 * For persistent context tests, never hardcode credentials — read from environment variables
 * Clean up is handled by `PersistentBrowserTestBase.DisposeAsync()` — do not manually delete profile dirs
+
+## Collection Fixture Patterns (Login-Once)
+
+These patterns apply when using `ICollectionFixture<T>` for suite-wide session sharing:
+
+| Automation intent | Playwright .NET code |
+| --- | --- |
+| Access shared page | `_session.Page` |
+| Access shared context | `_session.Context` |
+| Assert with collection fixture | `await Assertions.Expect(locator).ToBeVisibleAsync();` |
+| Navigate defensively | `await _session.Page.GotoAsync("https://...");` at start of each test |
+| Create isolated page from shared session | `var page = await _session.Context.NewPageAsync();` |
+| Clean up isolated page | `await page.CloseAsync();` |

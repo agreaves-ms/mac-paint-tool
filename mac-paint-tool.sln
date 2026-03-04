@@ -8,6 +8,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "playwright", "playwright", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MacPaintTool.Tests", "tests\playwright\MacPaintTool.Tests\MacPaintTool.Tests.csproj", "{1ADB55D0-1F38-0CBB-4CD4-E3061FED0692}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocIntegrationTests", "tests\playwright\DocIntegrationTests\DocIntegrationTests.csproj", "{A7B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,6 +20,10 @@ Global
 		{1ADB55D0-1F38-0CBB-4CD4-E3061FED0692}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1ADB55D0-1F38-0CBB-4CD4-E3061FED0692}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1ADB55D0-1F38-0CBB-4CD4-E3061FED0692}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A7B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -25,6 +31,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{EC43D851-E1D8-AC6D-9DB2-A2F17CD37EA7} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{1ADB55D0-1F38-0CBB-4CD4-E3061FED0692} = {EC43D851-E1D8-AC6D-9DB2-A2F17CD37EA7}
+		{A7B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D} = {EC43D851-E1D8-AC6D-9DB2-A2F17CD37EA7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {8C309599-DD94-434F-8CA2-6565C2657709}

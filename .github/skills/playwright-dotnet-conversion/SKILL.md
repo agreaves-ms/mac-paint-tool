@@ -14,7 +14,8 @@ Converts browser automation steps into maintainable Playwright .NET tests using 
 | Pattern | Base class | Use case |
 | --- | --- | --- |
 | **Ephemeral context** | `PageTest` (from `Microsoft.Playwright.Xunit`) | Standard web apps — fresh context per test |
-| **Persistent context** | `PersistentBrowserTestBase` (custom) | SSO/OAuth/auth-redirect sites that destroy in-memory contexts |
+| **Persistent context** | `PersistentBrowserTestBase` (custom) | SSO/OAuth — fresh context per test class |
+| **Collection fixture** | `ICollectionFixture<DocIntegrationFixture>` | SSO/OAuth — login once, share across all test classes |
 
 Use this skill to:
 
@@ -29,6 +30,7 @@ Default output locations for generated tests:
 
 * **Canvas/UI tests:** `tests/playwright/MacPaintTool.Tests` (uses `PageTest` / `MacPaintTestBase`)
 * **Regression/login/SSO tests:** `tests/playwright/RegressionTests` (uses `PersistentBrowserTestBase`)
+* **Collection fixture/login-once tests:** `tests/playwright/DocIntegrationTests` (uses `ICollectionFixture<DocIntegrationFixture>`)
 
 ## Prerequisites
 
@@ -69,6 +71,17 @@ $env:APP_USERNAME = "<your-username>"
 $env:APP_PASSWORD = "<your-password>"
 ```
 
+### Collection fixture tests (DocIntegrationTests)
+
+```bash
+dotnet build tests/playwright/DocIntegrationTests/DocIntegrationTests.csproj -c Release
+pwsh tests/playwright/DocIntegrationTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+$env:APP_USERNAME = "<your-username>"
+$env:APP_PASSWORD = "<your-password>"
+$env:HEADED = "1"
+dotnet test tests/playwright/DocIntegrationTests/DocIntegrationTests.csproj -c Release --logger "trx;LogFileName=doc-integration.trx"
+```
+
 ## When to Use Persistent vs Ephemeral Context
 
 | Signal | Use persistent (`PersistentBrowserTestBase`) |
@@ -78,6 +91,7 @@ $env:APP_PASSWORD = "<your-password>"
 | Need cookies/state to survive redirects | Yes |
 | Need login session to persist across test methods | Yes |
 | Simple SPA or localhost app testing | No — use `PageTest` |
+| Need login session shared across multiple test classes | Yes — use `ICollectionFixture` pattern |
 
 **Why persistent?** Standard `PageTest` creates a fresh in-memory `BrowserContext` per test. When a site does cross-origin SSO redirects, the in-memory context gets destroyed, causing `Target page, context or browser has been closed` errors. `LaunchPersistentContextAsync` uses a real user-data directory that survives these redirects.
 
@@ -184,6 +198,133 @@ The base class manages browser lifecycle manually instead of relying on `PageTes
 
 See [PersistentBrowserTestBase template](./assets/templates/PersistentBrowserTestBase.cs).
 
+## Collection Fixture Pattern (Login-Once)
+
+For sites requiring SSO/auth where you want to **login once** and share the authenticated session across all test classes, use the xUnit `ICollectionFixture<T>` pattern with `IAsyncLifetime`.
+
+### When to use collection fixture vs persistent vs ephemeral
+
+| Need | Pattern |
+| --- | --- |
+| Fresh context per test, no auth | Ephemeral (`PageTest`) |
+| Fresh persistent context per test class, with auth | Persistent (`PersistentBrowserTestBase`) |
+| Login once, share session across all test classes in suite | Collection fixture (`ICollectionFixture<T>`) |
+
+### Architecture
+
+The collection fixture pattern uses three components:
+
+1. **Fixture class** (`IAsyncLifetime`) — authenticates in `InitializeAsync()`, exposes `Page` and `Context`
+2. **Collection definition** — marker class linking collection name to fixture type via `[CollectionDefinition]`
+3. **Test classes** — tagged with `[Collection("...")]`, receive fixture via constructor injection
+
+### Lifecycle
+
+1. xUnit creates the fixture instance and calls `InitializeAsync()` — login happens once
+2. All test classes tagged with the same `[Collection]` name share the single fixture instance
+3. Tests within the collection run **sequentially** (xUnit guarantee)
+4. After all tests complete, xUnit calls `DisposeAsync()` — browser closes, profile dir cleaned up
+
+### Security properties
+
+* Credentials read from environment variables — never hardcoded
+* Persistent context uses a GUID-randomized temp profile directory
+* No storage state files exported — session lives only in the browser profile
+* Profile directory deleted in `DisposeAsync()` — no tokens persist after test run
+
+### Why persistent context for SSO
+
+Ephemeral contexts (`NewContextAsync`) create in-memory browser state. During SSO cross-origin redirects (e.g., identity provider → target app), the ephemeral context may be destroyed, causing `Target page, context or browser has been closed` errors. `LaunchPersistentContextAsync` uses a real user-data directory that survives these redirects.
+
+### Code structure
+
+**Fixture class:**
+
+```csharp
+public class DocIntegrationFixture : IAsyncLifetime
+{
+    private IPlaywright _playwright = null!;
+    private string _profileDir = null!;
+
+    public IBrowserContext Context { get; private set; } = null!;
+    public IPage Page { get; private set; } = null!;
+
+    public async Task InitializeAsync()
+    {
+        var username = Environment.GetEnvironmentVariable("APP_USERNAME")
+            ?? throw new InvalidOperationException("APP_USERNAME env var must be set");
+        var password = Environment.GetEnvironmentVariable("APP_PASSWORD")
+            ?? throw new InvalidOperationException("APP_PASSWORD env var must be set");
+
+        _profileDir = Path.Combine(Path.GetTempPath(), $"pw-docint-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_profileDir);
+
+        _playwright = await Playwright.CreateAsync();
+
+        Context = await _playwright.Chromium.LaunchPersistentContextAsync(_profileDir, new()
+        {
+            Channel = Environment.GetEnvironmentVariable("BROWSER_CHANNEL") ?? "msedge",
+            Headless = Environment.GetEnvironmentVariable("HEADED") != "1",
+            ViewportSize = new ViewportSize { Width = 1400, Height = 900 },
+            AcceptDownloads = true
+        });
+
+        Page = Context.Pages.Count > 0 ? Context.Pages[0] : await Context.NewPageAsync();
+
+        await Page.GotoAsync("https://example.com/");
+        // ... fill login form, click Log In, wait for redirect ...
+
+        await Assertions.Expect(Page.GetByText("Login Unsuccessful"))
+            .Not.ToBeVisibleAsync(new() { Timeout = 5_000 });
+    }
+
+    public async Task DisposeAsync()
+    {
+        try { await Context.CloseAsync(); } catch { }
+        _playwright.Dispose();
+        try { if (Directory.Exists(_profileDir)) Directory.Delete(_profileDir, true); } catch { }
+    }
+}
+```
+
+**Collection definition:**
+
+```csharp
+[CollectionDefinition("DocIntegration")]
+public class DocIntegrationCollection : ICollectionFixture<DocIntegrationFixture>
+{
+    // No code needed — links collection name to fixture type.
+}
+```
+
+**Test class:**
+
+```csharp
+[Collection("DocIntegration")]
+public class LoginTests
+{
+    private readonly DocIntegrationFixture _session;
+
+    public LoginTests(DocIntegrationFixture session) => _session = session;
+
+    [Fact]
+    public async Task Login_Succeeds_WithValidCredentials()
+    {
+        await Assertions.Expect(
+            _session.Page.GetByRole(AriaRole.Button, new() { Name = "Home" }))
+            .ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await _session.Page.ScreenshotAsync(new() { Path = "login.png" });
+    }
+}
+```
+
+Key differences from persistent context pattern:
+* Uses `Assertions.Expect()` (static) instead of inherited `Expect()` — no base class
+* Constructor injection instead of inheritance
+* `[Collection("...")]` attribute instead of `: PersistentBrowserTestBase`
+* Login happens once in fixture — tests only verify post-login state
+
 ## GitHub Actions Usage
 
 Use your existing workflow and ensure it includes these steps:
@@ -224,6 +365,17 @@ dotnet test tests/playwright/MacPaintTool.Tests/MacPaintTool.Tests.csproj -c Rel
 dotnet build tests/playwright/RegressionTests/RegressionTests.csproj -c Release
 pwsh tests/playwright/RegressionTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 dotnet test tests/playwright/RegressionTests/RegressionTests.csproj -c Release --logger "trx;LogFileName=regression.trx"
+```
+
+### For DocIntegrationTests (collection fixture)
+
+```bash
+dotnet build tests/playwright/DocIntegrationTests/DocIntegrationTests.csproj -c Release
+pwsh tests/playwright/DocIntegrationTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+$env:APP_USERNAME = "<your-username>"
+$env:APP_PASSWORD = "<your-password>"
+$env:HEADED = "1"
+dotnet test tests/playwright/DocIntegrationTests/DocIntegrationTests.csproj -c Release --logger "trx;LogFileName=doc-integration.trx"
 ```
 
 ## Conversion Examples
@@ -305,6 +457,60 @@ public class LoginTests : PersistentBrowserTestBase
 }
 ```
 
+### Example 3: SSO login-once with collection fixture (2 test classes sharing session)
+
+Source steps:
+
+1. Login to `https://doc-integration.pfizer.com/` with env var credentials
+2. Verify Home, Actions, VM Operations, CI Loop buttons visible
+3. Navigate Global Tech Eng > Clinical Manufacturing Supply Operations > Clinical Supply Puurs
+4. Click Apply
+5. Verify Top Priorities section shows expected items
+
+```csharp
+// DocIntegrationFixture.cs — logs in once (see Collection Fixture Pattern section)
+// DocIntegrationCollection.cs — [CollectionDefinition("DocIntegration")]
+
+// LoginTests.cs
+[Collection("DocIntegration")]
+public class LoginTests
+{
+    private readonly DocIntegrationFixture _session;
+    public LoginTests(DocIntegrationFixture session) => _session = session;
+
+    [Fact]
+    public async Task Login_Succeeds_WithValidCredentials()
+    {
+        await Assertions.Expect(_session.Page.GetByRole(AriaRole.Button, new() { Name = "Home" }))
+            .ToBeVisibleAsync(new() { Timeout = 10_000 });
+        await _session.Page.ScreenshotAsync(new() { Path = "login.png" });
+    }
+}
+
+// TopPrioritiesTests.cs
+[Collection("DocIntegration")]
+public class TopPrioritiesTests
+{
+    private readonly DocIntegrationFixture _session;
+    public TopPrioritiesTests(DocIntegrationFixture session) => _session = session;
+
+    [Fact]
+    public async Task TopPriorities_ShowsExpectedItems_AfterNavigatingToClinicalSupplyPuurs()
+    {
+        await _session.Page.GetByText("Global Tech Eng").ClickAsync();
+        await _session.Page.GetByText("Clinical Manufacturing Supply Operations").ClickAsync();
+        await _session.Page.GetByText("Clinical Supply Puurs").ClickAsync();
+        await _session.Page.GetByRole(AriaRole.Button, new() { Name = "Apply" }).ClickAsync();
+        await _session.Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+        await Assertions.Expect(_session.Page.GetByText("Top Priorities"))
+            .ToBeVisibleAsync(new() { Timeout = 15_000 });
+        await Assertions.Expect(_session.Page.GetByText("M2 MF RFT project follow up"))
+            .ToBeVisibleAsync(new() { Timeout = 5_000 });
+    }
+}
+```
+
 ## Templates
 
 Use these templates for fast generation:
@@ -312,6 +518,9 @@ Use these templates for fast generation:
 * [Ephemeral test template (PageTest)](./assets/templates/playwright-dotnet-test-template.cs) — standard web apps
 * [Persistent base class](./assets/templates/PersistentBrowserTestBase.cs) — SSO/auth-redirect sites
 * [Persistent test template](./assets/templates/persistent-test-template.cs) — login/regression tests
+* [Collection fixture class](./assets/templates/DocIntegrationFixture.cs) — SSO login-once shared fixture
+* [Collection definition](./assets/templates/CollectionDefinition.cs) — Collection marker class
+* [Collection fixture test](./assets/templates/collection-fixture-test-template.cs) — Test class with constructor injection
 
 ## Troubleshooting
 
@@ -325,5 +534,8 @@ Use these templates for fast generation:
 | `APP_USERNAME` is empty or wrong | Using `$env:username` (Windows built-in) | Use `$env:APP_USERNAME` / `Environment.GetEnvironmentVariable("APP_USERNAME")` |
 | Persistent profile causes state leakage | Previous test's cookies/session carried over | Base class cleans up profile dir in `DisposeAsync`; ensure tests are independent |
 | Edge not found | `msedge` channel not available | Install Edge or set `BROWSER_CHANNEL=chromium` env var |
+| Session expired mid-suite | SSO token timed out | Run suite within session validity window or add re-auth in fixture |
+| Test sees wrong page state | Previous test navigated elsewhere | Add `await _session.Page.GotoAsync(...)` at top of each test |
+| Collection tests run sequentially (slow) | xUnit serializes collection classes | Expected behavior — create new pages from `Context.NewPageAsync()` for parallelism if needed |
 
 > Brought to you by agreaves-ms/mac-paint-tool

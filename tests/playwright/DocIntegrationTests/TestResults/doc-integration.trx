@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="6dc034d8-4f0a-4080-9363-0dc04ad6e05e" name="GOVINK18@AMRAPWS2UF2JLYZ 2026-03-04 09:30:44" runUser="AMER\GOVINK18" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-03-04T09:30:44.2661243-08:00" queuing="2026-03-04T09:30:44.2661248-08:00" start="2026-03-04T09:29:59.3332550-08:00" finish="2026-03-04T09:30:46.2185990-08:00" />
+  <TestSettings name="default" id="f44707da-9eb7-4471-9ba0-fb7f0d414eb0">
+    <Deployment runDeploymentRoot="GOVINK18_AMRAPWS2UF2JLYZ_2026-03-04_09_30_44" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="46e71768-3ad5-4610-9d18-1da0ed6f42ab" testId="a430c1ee-6a9e-1955-9a8e-00e61fc63615" testName="DocIntegrationTests.TopPrioritiesTests.TopPriorities_ShowsExpectedItems_AfterNavigatingToClinicalSupplyPuurs" computerName="AMRAPWS2UF2JLYZ" duration="00:00:32.1731867" startTime="2026-03-04T09:30:12.0839992-08:00" endTime="2026-03-04T09:30:44.2270832-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="46e71768-3ad5-4610-9d18-1da0ed6f42ab">
+      <Output>
+        <ErrorInfo>
+          <Message>System.TimeoutException : Timeout 30000ms exceeded.
+Call log:
+  - waiting for GetByRole(AriaRole.Button, new() { Name = "Apply" })</Message>
+          <StackTrace>   at Microsoft.Playwright.Transport.Connection.InnerSendMessageToServerAsync[T](ChannelOwner object, String method, Dictionary`2 dictionary, Boolean keepNulls) in /_/src/Playwright/Transport/Connection.cs:line 201&#xD;
+   at Microsoft.Playwright.Transport.Connection.WrapApiCallAsync[T](Func`1 action, Boolean isInternal, String title) in /_/src/Playwright/Transport/Connection.cs:line 499&#xD;
+   at DocIntegrationTests.TopPrioritiesTests.TopPriorities_ShowsExpectedItems_AfterNavigatingToClinicalSupplyPuurs() in C:\Users\GOVINK18\mac-paint-tool\tests\playwright\DocIntegrationTests\TopPrioritiesTests.cs:line 29&#xD;
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="02f292a1-b29d-487f-906b-adfbcf9732c1" testId="399e3105-c9b8-8520-52e7-83be22ff5544" testName="DocIntegrationTests.LoginTests.Login_Succeeds_WithValidCredentials" computerName="AMRAPWS2UF2JLYZ" duration="00:00:01.5342229" startTime="2026-03-04T09:30:44.2448830-08:00" endTime="2026-03-04T09:30:45.7651832-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="02f292a1-b29d-487f-906b-adfbcf9732c1" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="DocIntegrationTests.TopPrioritiesTests.TopPriorities_ShowsExpectedItems_AfterNavigatingToClinicalSupplyPuurs" storage="c:\users\govink18\mac-paint-tool\tests\playwright\docintegrationtests\bin\release\net10.0\docintegrationtests.dll" id="a430c1ee-6a9e-1955-9a8e-00e61fc63615">
+      <Execution id="46e71768-3ad5-4610-9d18-1da0ed6f42ab" />
+      <TestMethod codeBase="C:\Users\GOVINK18\mac-paint-tool\tests\playwright\DocIntegrationTests\bin\Release\net10.0\DocIntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DocIntegrationTests.TopPrioritiesTests" name="TopPriorities_ShowsExpectedItems_AfterNavigatingToClinicalSupplyPuurs" />
+    </UnitTest>
+    <UnitTest name="DocIntegrationTests.LoginTests.Login_Succeeds_WithValidCredentials" storage="c:\users\govink18\mac-paint-tool\tests\playwright\docintegrationtests\bin\release\net10.0\docintegrationtests.dll" id="399e3105-c9b8-8520-52e7-83be22ff5544">
+      <Execution id="02f292a1-b29d-487f-906b-adfbcf9732c1" />
+      <TestMethod codeBase="C:\Users\GOVINK18\mac-paint-tool\tests\playwright\DocIntegrationTests\bin\Release\net10.0\DocIntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="DocIntegrationTests.LoginTests" name="Login_Succeeds_WithValidCredentials" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="a430c1ee-6a9e-1955-9a8e-00e61fc63615" executionId="46e71768-3ad5-4610-9d18-1da0ed6f42ab" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="399e3105-c9b8-8520-52e7-83be22ff5544" executionId="02f292a1-b29d-487f-906b-adfbcf9732c1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="2" executed="2" passed="1" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.3)&#xD;
+[xUnit.net 00:00:02.18]   Discovering: DocIntegrationTests&#xD;
+[xUnit.net 00:00:02.46]   Discovered:  DocIntegrationTests&#xD;
+[xUnit.net 00:00:02.47]   Starting:    DocIntegrationTests&#xD;
+[xUnit.net 00:00:42.02]       System.TimeoutException : Timeout 30000ms exceeded.
+Call log:
+  - waiting for GetByRole(AriaRole.Button, new() { Name = "Apply" })&#xD;
+[xUnit.net 00:00:42.02]       Stack Trace:&#xD;
+[xUnit.net 00:00:42.02]         /_/src/Playwright/Transport/Connection.cs(201,0): at Microsoft.Playwright.Transport.Connection.InnerSendMessageToServerAsync[T](ChannelOwner object, String method, Dictionary`2 dictionary, Boolean keepNulls)&#xD;
+[xUnit.net 00:00:42.02]         /_/src/Playwright/Transport/Connection.cs(499,0): at Microsoft.Playwright.Transport.Connection.WrapApiCallAsync[T](Func`1 action, Boolean isInternal, String title)&#xD;
+[xUnit.net 00:00:42.02]         C:\Users\GOVINK18\mac-paint-tool\tests\playwright\DocIntegrationTests\TopPrioritiesTests.cs(29,0): at DocIntegrationTests.TopPrioritiesTests.TopPriorities_ShowsExpectedItems_AfterNavigatingToClinicalSupplyPuurs()&#xD;
+[xUnit.net 00:00:42.02]         --- End of stack trace from previous location ---&#xD;
+[xUnit.net 00:00:43.97]   Finished:    DocIntegrationTests&#xD;
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="AMRAPWS2UF2JLYZ" outcome="Error" timestamp="2026-03-04T09:30:44.2303352-08:00">
+        <Text>[xUnit.net 00:00:42.02]     DocIntegrationTests.TopPrioritiesTests.TopPriorities_ShowsExpectedItems_AfterNavigatingToClinicalSupplyPuurs [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>
