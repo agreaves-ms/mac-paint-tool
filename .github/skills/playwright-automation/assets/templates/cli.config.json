@@ -1,6 +1,6 @@
 {
   "browser": {
-    "browserName": "chrome",
+    "browserName": "msedge",
     "launchOptions": {
       "headless": true
     },

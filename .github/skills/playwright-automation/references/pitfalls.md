@@ -102,6 +102,16 @@ Use double quotes for the outer string, single quotes inside:
 
 Named sessions are fully isolated (separate cookies, storage, cache). Use this for parallel testing but be aware that state is not shared between sessions.
 
+### 7. Edge availability and browser fallback
+
+`Start-Browser.ps1` defaults to `msedge`. If Edge is not installed, the script automatically falls back to `chrome` then `chromium`. To disable fallback and fail immediately:
+
+```powershell
+./scripts/Start-Browser.ps1 -BrowserType msedge -NoFallback
+```
+
+If you need a specific browser (for example, `firefox`), pass it explicitly — the fallback chain only applies to Chromium-family browsers when using the default.
+
 ---
 
 ## API Pitfalls
@@ -129,7 +139,9 @@ Each `browser.newContext()` has independent cookies, storage, and cache. Use thi
 
 ### 3. Headless by default
 
-Pass `{ headless: false }` to `chromium.launch()` to see the browser. Headless is the default.
+Pass `{ headless: false, channel: 'msedge' }` to `chromium.launch()` to see Edge.
+Fall back to `channel: 'chrome'` or omit `channel` for bundled Chromium if Edge is unavailable.
+Headless is the default.
 
 ### 4. Close resources
 

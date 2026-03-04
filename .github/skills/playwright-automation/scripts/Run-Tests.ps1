@@ -29,18 +29,23 @@ Filter tests by title pattern. Only tests matching this pattern run.
 
 .PARAMETER Project
 Run tests for a specific browser project defined in playwright.config.ts.
-Common values: chromium, firefox, webkit.
+Defaults to msedge for consistency with the skill's browser default.
+Use -Project '' to run all projects. Common values: msedge, chromium, firefox, webkit.
 
 .PARAMETER Workers
 Number of parallel worker processes for test execution.
 
 .EXAMPLE
 ./Run-Tests.ps1
-Runs all Playwright tests.
+Runs Playwright tests in the msedge project (default).
+
+.EXAMPLE
+./Run-Tests.ps1 -Project ''
+Runs all Playwright test projects.
 
 .EXAMPLE
 ./Run-Tests.ps1 -TestFile "tests/my.spec.ts" -Headed
-Runs a specific test file with visible browser.
+Runs a specific test file with visible browser in msedge.
 
 .EXAMPLE
 ./Run-Tests.ps1 -Debug
@@ -77,7 +82,7 @@ param(
     [string]$Grep,
 
     [Parameter()]
-    [string]$Project,
+    [string]$Project = 'msedge',
 
     [Parameter()]
     [int]$Workers
@@ -170,8 +175,9 @@ System.Void
 if ($MyInvocation.InvocationName -ne '.') {
     try {
         # If ShowReport is the only flag, just show the report
-        $reportOnly = $ShowReport -and -not $TestFile -and -not $Headed -and `
-            -not $Debug -and -not $Grep -and -not $Project -and $Workers -eq 0
+        $hasTestParams = $TestFile -or $Headed -or $Debug -or $Grep -or
+            $PSBoundParameters.ContainsKey('Project') -or ($Workers -gt 0)
+        $reportOnly = $ShowReport -and -not $hasTestParams
 
         if ($reportOnly) {
             Show-TestReport

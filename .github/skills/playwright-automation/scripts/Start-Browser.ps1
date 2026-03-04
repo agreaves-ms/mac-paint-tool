@@ -11,6 +11,11 @@ Launches a browser using playwright-cli with configurable options for
 URL navigation, headed mode, named sessions, persistent profiles,
 browser type, and viewport size.
 
+When no explicit -BrowserType is specified, the script attempts msedge
+first, then falls back to chrome, then chromium. Use -NoFallback to
+disable this behavior and fail immediately if the requested browser
+is unavailable.
+
 .PARAMETER Url
 URL to navigate to after opening the browser.
 
@@ -29,17 +34,22 @@ Use a persistent browser profile that survives browser restarts.
 Path to a specific browser profile directory.
 
 .PARAMETER BrowserType
-Browser channel/engine to use: chrome, msedge, firefox, or webkit.
+Browser channel/engine to use: msedge, chrome, firefox, or webkit.
 The value `chromium` is accepted as an alias and maps to `chrome` for
 compatibility with older skill examples.
-Defaults to chrome.
+Defaults to msedge. When the default is used, automatic fallback to
+chrome then chromium is attempted if the preferred browser is unavailable.
+
+.PARAMETER NoFallback
+Disable automatic browser fallback. When set, the script fails immediately
+if the requested browser is unavailable instead of trying alternatives.
 
 .PARAMETER ViewportSize
 Viewport dimensions as WIDTHxHEIGHT string. Defaults to 1280x720.
 
 .EXAMPLE
 ./Start-Browser.ps1 -Url "http://localhost:5174" -Headed
-Opens a visible Chrome browser and navigates to the URL.
+Opens a visible Edge browser (or Chrome/Chromium fallback) and navigates to the URL.
 
 .EXAMPLE
 ./Start-Browser.ps1 -Url "http://localhost:5174" -Session "testing" -Headed
@@ -48,6 +58,10 @@ Opens a named session for isolated testing.
 .EXAMPLE
 ./Start-Browser.ps1 -BrowserType firefox -ViewportSize "1400x1100"
 Opens Firefox with a larger viewport.
+
+.EXAMPLE
+./Start-Browser.ps1 -BrowserType chrome -NoFallback
+Opens Chrome without fallback — fails if Chrome is not available.
 #>
 
 [CmdletBinding()]
@@ -69,7 +83,10 @@ param(
 
     [Parameter()]
     [ValidateSet('chrome', 'chromium', 'firefox', 'webkit', 'msedge')]
-    [string]$BrowserType = 'chrome',
+    [string]$BrowserType = 'msedge',
+
+    [Parameter()]
+    [switch]$NoFallback,
 
     [Parameter()]
     [ValidatePattern('^\d+x\d+$')]
@@ -79,6 +96,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 Import-Module (Join-Path $PSScriptRoot 'shared.psm1') -Force
+
+# Fallback order for Chromium-based browsers when the default is used.
+$Script:BrowserFallbackOrder = @('msedge', 'chrome', 'chromium')
 
 function Open-PlaywrightBrowser {
     <#
@@ -95,7 +115,9 @@ System.String
         [switch]$Persistent,
         [string]$ProfilePath,
         [string]$BrowserType,
-        [string]$ViewportSize
+        [string]$ViewportSize,
+        [switch]$NoFallback,
+        [bool]$UserExplicitBrowser
     )
 
     $resolvedBrowser = switch ($BrowserType) {
@@ -121,6 +143,48 @@ System.String
         $cliArgs += "--profile=$ProfilePath"
     }
 
+    # Determine whether fallback is available.
+    # Fallback only applies to Chromium-family browsers when the user did not
+    # explicitly choose a browser and -NoFallback is not set.
+    $canFallback = (-not $NoFallback) -and (-not $UserExplicitBrowser) -and
+        ($resolvedBrowser -in $Script:BrowserFallbackOrder)
+
+    if ($canFallback) {
+        # Try each browser in the fallback order starting from the current one.
+        $startIndex = [Math]::Max(0, [Array]::IndexOf($Script:BrowserFallbackOrder, $resolvedBrowser))
+        $lastError = $null
+
+        for ($i = $startIndex; $i -lt $Script:BrowserFallbackOrder.Count; $i++) {
+            $candidate = $Script:BrowserFallbackOrder[$i]
+            $cliArgs[1] = "--browser=$candidate"
+
+            try {
+                $output = Invoke-PlaywrightCli -Arguments $cliArgs -Session $Session
+
+                if ($candidate -ne $resolvedBrowser) {
+                    Write-SkillOutput -Title 'Browser' -Message "Fell back from $resolvedBrowser to $candidate."
+                }
+
+                # Resize viewport after successful launch.
+                if ($ViewportSize) {
+                    $size = $ViewportSize -split 'x'
+                    if ($size.Count -eq 2) {
+                        $null = Invoke-PlaywrightCli -Arguments @('resize', $size[0], $size[1]) -Session $Session
+                    }
+                }
+
+                return $output
+            }
+            catch {
+                $lastError = $_
+                Write-Warning "Browser '$candidate' unavailable: $($_.Exception.Message)"
+            }
+        }
+
+        throw "All browsers in fallback chain ($($Script:BrowserFallbackOrder -join ' -> ')) failed. Last error: $($lastError.Exception.Message)"
+    }
+
+    # No fallback — launch directly.
     $output = Invoke-PlaywrightCli -Arguments $cliArgs -Session $Session
 
     # playwright-cli uses a separate resize command for viewport changes.
@@ -137,6 +201,7 @@ System.String
 #region Main Execution
 if ($MyInvocation.InvocationName -ne '.') {
     try {
+        $userExplicit = $PSBoundParameters.ContainsKey('BrowserType')
         Write-SkillOutput -Title 'Browser' -Message "Opening $BrowserType browser..."
 
         $result = Open-PlaywrightBrowser `
@@ -146,7 +211,9 @@ if ($MyInvocation.InvocationName -ne '.') {
             -Persistent:$Persistent `
             -ProfilePath $ProfilePath `
             -BrowserType $BrowserType `
-            -ViewportSize $ViewportSize
+            -ViewportSize $ViewportSize `
+            -NoFallback:$NoFallback `
+            -UserExplicitBrowser $userExplicit
 
         if ($result) {
             Write-Host $result
@@ -176,7 +243,9 @@ if ($MyInvocation.InvocationName -ne '.') {
                     -Persistent:$Persistent `
                     -ProfilePath $ProfilePath `
                     -BrowserType $BrowserType `
-                    -ViewportSize $ViewportSize
+                    -ViewportSize $ViewportSize `
+                    -NoFallback:$NoFallback `
+                    -UserExplicitBrowser $userExplicit
 
                 if ($retryResult) {
                     Write-Host $retryResult

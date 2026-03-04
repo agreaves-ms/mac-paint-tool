@@ -9,8 +9,9 @@ async function main(): Promise<void> {
   let browser: Browser | null = null;
 
   try {
-    // Launch browser (set headless: false to see the browser)
-    browser = await chromium.launch({ headless: false });
+    // Launch Edge by default. Falls back to default Chromium if Edge is unavailable.
+    // Other channels: 'chrome', 'msedge', or omit channel for bundled Chromium.
+    browser = await chromium.launch({ headless: false, channel: 'msedge' });
     const page: Page = await browser.newPage();
 
     // Set viewport for canvas apps

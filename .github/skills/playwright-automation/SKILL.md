@@ -109,7 +109,8 @@ Run Playwright tests:
 | Session        | `-Session`        | (none)       | Named session for isolation                    |
 | Persistent     | `-Persistent`     | `$false`     | Use persistent browser profile                 |
 | Profile        | `-ProfilePath`    | (none)       | Path to browser profile directory              |
-| Browser        | `-BrowserType`    | `chrome`     | Browser/channel: chrome (or chromium alias), msedge, firefox, webkit |
+| Browser        | `-BrowserType`    | `msedge`     | Browser/channel: msedge (default, with fallback to chrome then chromium), chrome, firefox, webkit |
+| No Fallback    | `-NoFallback`     | `$false`     | Disable automatic browser fallback chain         |
 | Viewport       | `-ViewportSize`   | `1280x720`   | Viewport dimensions (WIDTHxHEIGHT)            |
 
 ### Stop-Browser
@@ -148,7 +149,7 @@ Run Playwright tests:
 | Debug        | `-Debug`       | `$false`  | Run in debug mode                            |
 | ShowReport   | `-ShowReport`  | `$false`  | Open HTML report after tests                 |
 | Grep         | `-Grep`        | (none)    | Filter tests by title pattern                |
-| Project      | `-Project`     | (none)    | Run specific project (chromium, firefox, webkit) |
+| Project      | `-Project`     | `msedge`  | Run specific project (msedge, chromium, firefox, webkit). Use `-Project ''` to run all. |
 | Workers      | `-Workers`     | (none)    | Number of parallel workers                   |
 
 ## Script Reference
@@ -191,6 +192,9 @@ Run Playwright tests:
 
     # Open with specific browser and viewport
     ./scripts/Start-Browser.ps1 -Url "http://localhost:5174" -BrowserType firefox -ViewportSize "1400x1100"
+
+    # Open with Chrome explicitly (no fallback to other browsers)
+    ./scripts/Start-Browser.ps1 -Url "http://localhost:5174" -BrowserType chrome -NoFallback
 
     # Close specific session
     ./scripts/Stop-Browser.ps1 -Session "testing"
@@ -255,8 +259,11 @@ Run Playwright tests:
 
 ### Test Execution
 
-    # Run all tests
+    # Run tests (defaults to msedge project)
     ./scripts/Run-Tests.ps1
+
+    # Run all browser projects
+    ./scripts/Run-Tests.ps1 -Project ''
 
     # Run specific test file with visible browser
     ./scripts/Run-Tests.ps1 -TestFile "tests/my.spec.ts" -Headed
@@ -294,6 +301,7 @@ Key rules:
 * Use **named sessions** (`-Session`) when managing multiple browsers
 * **Close browsers** when done to prevent zombie processes
 * For this project, use port **5174** to avoid conflicts with Electron Forge's port 5173
+* Default browser is **msedge** with automatic fallback to chrome then chromium when Edge is unavailable. Use `-BrowserType` to override or `-NoFallback` to disable fallback.
 * In agent tool execution, keep server/browser startup non-blocking and continue with follow-up commands
 * For visual/manual verification tasks, require headed mode and verify it explicitly
 * For export tasks in standalone mode, use browser-only export flows rather than Electron IPC
@@ -324,7 +332,7 @@ For detailed feature documentation covering all 18 Playwright categories:
 | ------------------------------------ | -------------------------------------- | ------------------------------------------------------------- |
 | `npm: command not found`             | Node.js not installed                  | Install Node.js 18+ from nodejs.org                           |
 | `playwright-cli: command not found`  | CLI not installed                      | Run `./scripts/Install-Playwright.ps1`                        |
-| Browser fails to launch              | CLI workspace not initialized / wrong browser channel default | Run `playwright-cli install`, or use `./scripts/Start-Browser.ps1 -BrowserType chrome` |
+| Browser fails to launch              | CLI workspace not initialized / wrong browser channel default | Run `playwright-cli install`, or use `./scripts/Start-Browser.ps1 -BrowserType chrome`. Default msedge falls back to chrome then chromium automatically. |
 | Dev server hangs on startup          | Port already in use                    | Kill process on port: `lsof -i :5174` and kill PID            |
 | Snapshot returns empty               | Page not loaded                        | Wait for navigation to complete before taking snapshot         |
 | Element refs not found               | Refs changed after DOM update          | Re-run snapshot to get fresh refs                             |

@@ -47,7 +47,8 @@ playwright-cli close                       # Close browser
 ```typescript
 import { chromium } from 'playwright';
 
-const browser = await chromium.launch({ headless: false });
+// Launch Edge by default. Falls back: msedge -> chrome -> bundled chromium.
+const browser = await chromium.launch({ headless: false, channel: 'msedge' });
 const page = await browser.newPage();
 
 await page.goto('https://example.com');
@@ -457,6 +458,7 @@ const page2 = await context2.newPage();
 // Persistent context
 const context = await chromium.launchPersistentContext('/path/to/profile', {
   headless: false,
+  channel: 'msedge',
 });
 ```
 
