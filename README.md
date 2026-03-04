@@ -41,11 +41,13 @@ git fetch upstream
 
 ### 3. Set Up the GitHub MCP Server
 
-The **GitHub MCP Server** enables Copilot agents to interact with GitHub directly: creating pull requests, managing issues, and more. It ships with the **GitHub Pull Requests** VS Code extension.
+The **GitHub MCP Server** enables Copilot agents to interact with GitHub directly: creating pull requests, managing issues, and more. This project includes the MCP server configuration in `.vscode/mcp.json`.
 
-1. Install the [GitHub Pull Requests and Issues](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github) extension in VS Code.
-2. Sign in to your GitHub account when prompted.
-3. The GitHub MCP server is automatically available to Copilot Chat once the extension is active. No additional configuration is needed.
+1. Open the repository in VS Code.
+2. VS Code detects the `.vscode/mcp.json` configuration and makes the GitHub MCP server available to Copilot Chat automatically.
+3. When prompted, authorize the MCP server to access your GitHub account.
+
+No extensions are required for the GitHub MCP server — it's configured at the project level.
 
 ### 4. Install and Use GitHub Backlog Manager
 
@@ -220,7 +222,6 @@ After your first contribution, here are some ways to keep the momentum going:
   - [HVE Core](https://marketplace.visualstudio.com/items?itemName=ise-hve-essentials.hve-core): RPI workflow, agents, and prompts
   - [HVE Core - Coding Standards](https://marketplace.visualstudio.com/items?itemName=ise-hve-essentials.hve-coding-standards): language-specific coding conventions
   - [HVE Core - GitHub Backlog Management](https://marketplace.visualstudio.com/items?itemName=ise-hve-essentials.hve-github): issue triage and backlog management
-  - [GitHub Pull Requests and Issues](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github): GitHub MCP server and PR management
 
 ### Dev Container
 
