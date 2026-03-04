@@ -1,14 +1,14 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: MIT
-#Requires -Version 7.0
+# PowerShell 5.1+ compatible — no #Requires -Version 7.0
 
 <#
 .SYNOPSIS
-Installs Playwright CLI, API packages, and browser binaries.
+Installs Playwright CLI, API packages, and initializes browser channels.
 
 .DESCRIPTION
 Installs the Playwright ecosystem components based on the provided flags.
-By default, installs the CLI globally and downloads browser binaries.
+By default, installs the CLI globally and initializes the workspace to
+discover installed browser channels (Chrome/Edge where available).
+Browser binaries are NOT downloaded by default.
 
 .PARAMETER InstallCli
 Install @playwright/cli globally via npm. Defaults to true.
@@ -17,24 +17,23 @@ Install @playwright/cli globally via npm. Defaults to true.
 Install playwright and @playwright/test as dev dependencies in the current project.
 
 .PARAMETER InstallBrowsers
-Download Playwright browser binaries. Defaults to true.
+Download Playwright browser binaries. Defaults to false (system-installed channels are tried first).
 
 .PARAMETER InitializeCliWorkspace
-Run `playwright-cli install` to initialize workspace config and discover
-locally installed browser channels (for example Chrome and Edge).
+Run workspace initialization to discover installed browser channels.
 Defaults to true.
 
 .EXAMPLE
 ./Install-Playwright.ps1
-Installs the CLI globally and downloads browsers.
+Installs the CLI globally and initializes browser channel discovery.
 
 .EXAMPLE
 ./Install-Playwright.ps1 -InstallApi -InstallCli:$false
-Installs API packages as dev dependencies and downloads browsers.
+Installs API packages as dev dependencies.
 
 .EXAMPLE
-./Install-Playwright.ps1 -InstallApi
-Installs both CLI and API packages plus browsers.
+./Install-Playwright.ps1 -InstallApi -InstallBrowsers:$true
+Installs both CLI and API packages plus downloads browser binaries.
 #>
 
 [CmdletBinding(SupportsShouldProcess = $true)]
@@ -46,7 +45,7 @@ param(
     [switch]$InstallApi,
 
     [Parameter()]
-    [bool]$InstallBrowsers = $true,
+    [bool]$InstallBrowsers = $false,
 
     [Parameter()]
     [bool]$InitializeCliWorkspace = $true
@@ -57,12 +56,6 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'shared.psm1') -Force
 
 function Install-PlaywrightCli {
-    <#
-.SYNOPSIS
-Installs @playwright/cli globally.
-.OUTPUTS
-System.Void
-#>
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([void])]
     param()
@@ -78,12 +71,6 @@ System.Void
 }
 
 function Install-PlaywrightApi {
-    <#
-.SYNOPSIS
-Installs playwright and @playwright/test as dev dependencies.
-.OUTPUTS
-System.Void
-#>
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([void])]
     param()
@@ -99,12 +86,6 @@ System.Void
 }
 
 function Install-PlaywrightBrowsers {
-    <#
-.SYNOPSIS
-Downloads Playwright browser binaries.
-.OUTPUTS
-System.Void
-#>
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([void])]
     param()
@@ -120,28 +101,19 @@ System.Void
 }
 
 function Initialize-PlaywrightCliWorkspace {
-    <#
-.SYNOPSIS
-Initializes playwright-cli workspace and browser channel discovery.
-.OUTPUTS
-System.Void
-#>
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([void])]
     param()
 
-    if (-not (Test-CommandAvailable 'playwright-cli')) {
-        Write-Warning 'playwright-cli is not available; skipping workspace initialization.'
-        return
-    }
+    if ($PSCmdlet.ShouldProcess('playwright-cli workspace', 'Initialize via npx playwright-cli install')) {
+        Write-SkillOutput -Title 'Install' -Message 'Initializing playwright-cli workspace (discovering browser channels)...'
 
-    if ($PSCmdlet.ShouldProcess('playwright-cli workspace', 'Initialize via playwright-cli install')) {
-        Write-SkillOutput -Title 'Install' -Message 'Initializing playwright-cli workspace...'
-        & playwright-cli install
+        # Use npx to avoid execution policy issues with global .ps1 shims
+        & npx playwright-cli install
         if ($LASTEXITCODE -ne 0) {
             throw 'Failed to initialize playwright-cli workspace.'
         }
-        Write-SkillOutput -Title 'Install' -Message 'playwright-cli workspace initialized.'
+        Write-SkillOutput -Title 'Install' -Message 'playwright-cli workspace initialized. Browser channels discovered.'
     }
 }
 

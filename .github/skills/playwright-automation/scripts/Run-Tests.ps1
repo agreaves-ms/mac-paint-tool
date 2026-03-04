@@ -1,6 +1,4 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: MIT
-#Requires -Version 7.0
+# PowerShell 5.1+ compatible — no #Requires -Version 7.0
 
 <#
 .SYNOPSIS
@@ -12,7 +10,7 @@ browser visibility, debug mode, test filtering, project selection, worker
 count, and HTML report display.
 
 .PARAMETER TestFile
-Path to a specific test file to run. When omitted, runs all tests.
+Path to a specific test file to run.
 
 .PARAMETER Headed
 Run tests with visible browser windows.
@@ -21,42 +19,25 @@ Run tests with visible browser windows.
 Run tests in debug mode with Playwright Inspector.
 
 .PARAMETER ShowReport
-Open the HTML test report after tests complete. When used alone
-(without other flags), shows the report from the last test run.
+Open the HTML test report after tests complete.
 
 .PARAMETER Grep
-Filter tests by title pattern. Only tests matching this pattern run.
+Filter tests by title pattern.
 
 .PARAMETER Project
-Run tests for a specific browser project defined in playwright.config.ts.
-Common values: chromium, firefox, webkit.
+Run tests for a specific browser project.
 
 .PARAMETER Workers
 Number of parallel worker processes for test execution.
 
 .EXAMPLE
 ./Run-Tests.ps1
-Runs all Playwright tests.
 
 .EXAMPLE
 ./Run-Tests.ps1 -TestFile "tests/my.spec.ts" -Headed
-Runs a specific test file with visible browser.
-
-.EXAMPLE
-./Run-Tests.ps1 -Debug
-Runs tests in debug mode with Playwright Inspector.
 
 .EXAMPLE
 ./Run-Tests.ps1 -Grep "navigation" -Project chromium
-Runs tests matching "navigation" in Chromium only.
-
-.EXAMPLE
-./Run-Tests.ps1 -ShowReport
-Opens the HTML report from the last test run.
-
-.EXAMPLE
-./Run-Tests.ps1 -Workers 4
-Runs all tests with 4 parallel workers.
 #>
 
 [CmdletBinding()]
@@ -88,12 +69,6 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'shared.psm1') -Force
 
 function Invoke-PlaywrightTests {
-    <#
-.SYNOPSIS
-Builds and executes the npx playwright test command.
-.OUTPUTS
-System.String
-#>
     [OutputType([string])]
     param(
         [string]$TestFile,
@@ -149,12 +124,6 @@ System.String
 }
 
 function Show-TestReport {
-    <#
-.SYNOPSIS
-Opens the Playwright HTML test report.
-.OUTPUTS
-System.Void
-#>
     [OutputType([void])]
     param()
 

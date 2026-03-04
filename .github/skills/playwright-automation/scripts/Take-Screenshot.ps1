@@ -1,6 +1,4 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: MIT
-#Requires -Version 7.0
+# PowerShell 5.1+ compatible — no #Requires -Version 7.0
 
 <#
 .SYNOPSIS
@@ -12,35 +10,25 @@ or generates a PDF document. Supports named sessions and custom
 output filenames.
 
 .PARAMETER Filename
-Output filename for the screenshot or PDF. When omitted, playwright-cli
-generates an auto-named file.
+Output filename for the screenshot or PDF.
 
 .PARAMETER Ref
-Element reference from a snapshot (e.g., e5) to screenshot a specific
-element instead of the full page.
+Element reference from a snapshot (e.g., e5) to screenshot a specific element.
 
 .PARAMETER Format
-Output format: png (screenshot) or pdf (PDF document).
-Defaults to png.
+Output format: png (screenshot) or pdf (PDF document). Defaults to png.
 
 .PARAMETER Session
 Named session to target for the capture.
 
 .EXAMPLE
 ./Take-Screenshot.ps1 -Filename "page.png"
-Takes a full page screenshot saved as page.png.
 
 .EXAMPLE
 ./Take-Screenshot.ps1 -Ref e5 -Filename "element.png"
-Takes a screenshot of element e5.
 
 .EXAMPLE
 ./Take-Screenshot.ps1 -Format pdf -Filename "page.pdf"
-Saves the current page as a PDF.
-
-.EXAMPLE
-./Take-Screenshot.ps1 -Session "testing" -Filename "result.png"
-Takes a screenshot in the named session "testing".
 #>
 
 [CmdletBinding()]
@@ -64,12 +52,6 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'shared.psm1') -Force
 
 function Invoke-Capture {
-<#
-.SYNOPSIS
-Executes the screenshot or PDF capture command.
-.OUTPUTS
-System.String
-#>
     [OutputType([string])]
     param(
         [string]$Filename,

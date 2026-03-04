@@ -1,5 +1,5 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: MIT
+# Shared utilities for Playwright automation skill scripts (generic variant).
+# Compatible with PowerShell 5.1+ (no #Requires -Version 7.0).
 
 <#
 .SYNOPSIS
@@ -7,7 +7,8 @@ Shared utilities for Playwright automation skill scripts.
 
 .DESCRIPTION
 Provides common functions used across all Playwright automation scripts:
-command resolution, process management, and output formatting.
+command resolution, process management, output formatting, and
+execution-policy-safe CLI invocation.
 #>
 
 function Get-RepositoryRoot {
@@ -61,6 +62,53 @@ System.Boolean
     return $null -ne (Get-Command $CommandName -ErrorAction SilentlyContinue)
 }
 
+function Test-PlaywrightCliUsable {
+    <#
+.SYNOPSIS
+Checks if playwright-cli can actually execute (not just found on PATH).
+On PowerShell 5.1 with restricted execution policy, the .ps1 shim for
+npm global packages may fail even though Get-Command finds it.
+.OUTPUTS
+System.Boolean
+#>
+    [OutputType([bool])]
+    param()
+
+    if (-not (Test-CommandAvailable 'playwright-cli')) {
+        return $false
+    }
+
+    # Try running it. If execution policy blocks the .ps1 shim, this fails.
+    try {
+        $null = & playwright-cli --version 2>$null
+        return ($LASTEXITCODE -eq 0)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-IsWindowsHost {
+    <#
+.SYNOPSIS
+Returns true when running on Windows PowerShell 5.1 or PowerShell 7+ on Windows.
+.OUTPUTS
+System.Boolean
+#>
+    [OutputType([bool])]
+    param()
+
+    if ($PSVersionTable.PSEdition -eq 'Desktop') {
+        return $true
+    }
+
+    if (Test-Path variable:IsWindows) {
+        return [bool]$IsWindows
+    }
+
+    return $env:OS -eq 'Windows_NT'
+}
+
 function Invoke-NpmCommand {
     <#
 .SYNOPSIS
@@ -98,6 +146,8 @@ function Invoke-PlaywrightCli {
     <#
 .SYNOPSIS
 Executes a playwright-cli command with optional session targeting.
+Falls back to npx playwright-cli when the global command is blocked
+by PowerShell execution policy (common on PowerShell 5.1).
 .PARAMETER Arguments
 Arguments to pass to playwright-cli.
 .PARAMETER Session
@@ -114,22 +164,30 @@ System.String
         [string]$Session
     )
 
-    if (-not (Test-CommandAvailable 'playwright-cli')) {
-        if (Test-CommandAvailable 'npx') {
-            $executable = 'npx'
-            $allArgs = @('playwright-cli') + $Arguments
-        }
-        else {
-            throw "playwright-cli is not installed. Run Install-Playwright.ps1 first."
-        }
-    }
-    else {
+    # Determine executable: prefer global playwright-cli if it can run,
+    # otherwise fall back to npx (which uses the .cmd shim, not .ps1).
+    $useNpx = $false
+    if (Test-PlaywrightCliUsable) {
         $executable = 'playwright-cli'
         $allArgs = $Arguments
     }
+    elseif (Test-CommandAvailable 'npx') {
+        $executable = 'npx'
+        $allArgs = @('playwright-cli') + $Arguments
+        $useNpx = $true
+    }
+    else {
+        throw "playwright-cli is not installed and npx is not available. Run Install-Playwright.ps1 first."
+    }
 
     if ($Session) {
-        $allArgs = @("-s=$Session") + $allArgs
+        if ($useNpx) {
+            # Session flag goes after 'playwright-cli' but before the command
+            $allArgs = @('playwright-cli', "-s=$Session") + $Arguments
+        }
+        else {
+            $allArgs = @("-s=$Session") + $allArgs
+        }
     }
 
     $output = & $executable @allArgs 2>&1
@@ -213,6 +271,8 @@ Whether this is an error message.
 Export-ModuleMember -Function @(
     'Get-RepositoryRoot',
     'Test-CommandAvailable',
+    'Test-PlaywrightCliUsable',
+    'Test-IsWindowsHost',
     'Invoke-NpmCommand',
     'Invoke-PlaywrightCli',
     'Wait-ForUrl',

@@ -1,6 +1,4 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: MIT
-#Requires -Version 7.0
+# PowerShell 5.1+ compatible — no #Requires -Version 7.0
 
 <#
 .SYNOPSIS
@@ -16,11 +14,9 @@ Port of the dev server to stop. Defaults to 5174.
 
 .EXAMPLE
 ./Stop-DevServer.ps1
-Stops the dev server on port 5174.
 
 .EXAMPLE
 ./Stop-DevServer.ps1 -Port 3000
-Stops a dev server running on port 3000.
 #>
 
 [CmdletBinding()]
@@ -45,11 +41,12 @@ if ($MyInvocation.InvocationName -ne '.') {
         $processId = [int](Get-Content $pidFile -ErrorAction SilentlyContinue)
         if ($processId) {
             try {
-                if ($IsLinux -or $IsMacOS) {
-                    & kill $processId 2>$null
+                $isWindows = Test-IsWindowsHost
+                if ($isWindows) {
+                    Stop-Process -Id $processId -Force -ErrorAction Stop
                 }
                 else {
-                    Stop-Process -Id $processId -Force -ErrorAction Stop
+                    & kill $processId 2>$null
                 }
                 $stopped = $true
                 Write-SkillOutput -Title 'DevServer' -Message "Stopped server (PID $processId)."
@@ -63,7 +60,19 @@ if ($MyInvocation.InvocationName -ne '.') {
 
     # Fall back to killing by port
     if (-not $stopped) {
-        if ($IsLinux -or $IsMacOS) {
+        $isWindows = Test-IsWindowsHost
+        if ($isWindows) {
+            $conn = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue |
+                Where-Object { $_.State -eq 'Listen' }
+            if ($conn) {
+                $conn | ForEach-Object {
+                    Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+                }
+                $stopped = $true
+                Write-SkillOutput -Title 'DevServer' -Message "Stopped process(es) on port $Port."
+            }
+        }
+        else {
             $pids = & lsof -ti ":$Port" 2>$null
             if ($pids) {
                 foreach ($p in ($pids -split "`n")) {
@@ -76,17 +85,6 @@ if ($MyInvocation.InvocationName -ne '.') {
                 if ($stopped) {
                     Write-SkillOutput -Title 'DevServer' -Message "Stopped process(es) on port $Port."
                 }
-            }
-        }
-        else {
-            $conn = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue |
-            Where-Object State -eq 'Listen'
-            if ($conn) {
-                $conn | ForEach-Object {
-                    Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
-                }
-                $stopped = $true
-                Write-SkillOutput -Title 'DevServer' -Message "Stopped process(es) on port $Port."
             }
         }
     }

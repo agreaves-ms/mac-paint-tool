@@ -1,6 +1,4 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: MIT
-#Requires -Version 7.0
+# PowerShell 5.1+ compatible — no #Requires -Version 7.0
 
 <#
 .SYNOPSIS
@@ -22,15 +20,12 @@ Force kill all browser sessions immediately.
 
 .EXAMPLE
 ./Stop-Browser.ps1 -Session "testing"
-Closes the named session "testing".
 
 .EXAMPLE
 ./Stop-Browser.ps1 -All
-Closes all browser sessions gracefully.
 
 .EXAMPLE
 ./Stop-Browser.ps1 -Force
-Force kills all browser sessions.
 #>
 
 [CmdletBinding()]
@@ -50,12 +45,6 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'shared.psm1') -Force
 
 function Close-PlaywrightSession {
-<#
-.SYNOPSIS
-Closes browser sessions based on the provided parameters.
-.OUTPUTS
-System.String
-#>
     [OutputType([string])]
     param(
         [string]$Session,

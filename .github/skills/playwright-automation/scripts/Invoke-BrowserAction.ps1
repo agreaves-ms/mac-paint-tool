@@ -1,6 +1,4 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: MIT
-#Requires -Version 7.0
+# PowerShell 5.1+ compatible — no #Requires -Version 7.0
 
 <#
 .SYNOPSIS
@@ -15,67 +13,34 @@ Requires element refs from a prior snapshot action. Refs (e1, e2, ...) change
 after page navigation or DOM mutations — always re-snapshot before interacting.
 
 .PARAMETER Action
-The browser action to perform. Valid values:
-  click, dblclick, fill, type, select, hover, drag, check, uncheck,
-  press, snapshot, eval, goto, dialog-accept, dialog-dismiss,
-  console, network, tab-list, reload, go-back, go-forward
+The browser action to perform.
 
 .PARAMETER Ref
-Element reference from a snapshot (e.g., e3). Required for element
-interaction actions like click, fill, hover, etc.
+Element reference from a snapshot (e.g., e3).
 
 .PARAMETER Value
-Value for the action. Used with fill (text to enter), type (text to type),
-select (option value), press (key name), eval (expression), goto (URL).
+Value for the action (fill text, type text, key name, expression, URL).
 
 .PARAMETER Target
-Target element reference for drag actions. Specifies the drop target.
+Target element reference for drag actions.
 
 .PARAMETER Session
 Named session to scope the action to.
 
 .PARAMETER Button
-Mouse button for click actions: left, right, middle. Defaults to left.
+Mouse button for click actions: left, right, middle.
 
 .EXAMPLE
 ./Invoke-BrowserAction.ps1 -Action snapshot
-Takes a page snapshot and returns element refs.
 
 .EXAMPLE
 ./Invoke-BrowserAction.ps1 -Action click -Ref e3
-Clicks element e3.
 
 .EXAMPLE
 ./Invoke-BrowserAction.ps1 -Action fill -Ref e5 -Value "user@example.com"
-Fills element e5 with the specified text.
-
-.EXAMPLE
-./Invoke-BrowserAction.ps1 -Action type -Value "search query"
-Types text into the currently focused element.
-
-.EXAMPLE
-./Invoke-BrowserAction.ps1 -Action select -Ref e9 -Value "option-value"
-Selects a dropdown option by value.
-
-.EXAMPLE
-./Invoke-BrowserAction.ps1 -Action drag -Ref e2 -Target e8
-Drags element e2 to element e8.
-
-.EXAMPLE
-./Invoke-BrowserAction.ps1 -Action press -Value "Enter"
-Presses the Enter key.
 
 .EXAMPLE
 ./Invoke-BrowserAction.ps1 -Action eval -Value "document.title"
-Evaluates a JavaScript expression in the page context.
-
-.EXAMPLE
-./Invoke-BrowserAction.ps1 -Action goto -Value "http://localhost:5174"
-Navigates to the specified URL.
-
-.EXAMPLE
-./Invoke-BrowserAction.ps1 -Action dialog-accept
-Accepts the current browser dialog.
 #>
 
 [CmdletBinding()]
@@ -113,17 +78,10 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'shared.psm1') -Force
 
 function Build-ActionArguments {
-<#
-.SYNOPSIS
-Builds the CLI argument list for the specified action.
-.OUTPUTS
-System.String[]
-#>
     [OutputType([string[]])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Action,
-
         [string]$Ref,
         [string]$Value,
         [string]$Target,

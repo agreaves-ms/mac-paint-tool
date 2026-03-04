@@ -1,38 +1,32 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: MIT
-#Requires -Version 7.0
+# PowerShell 5.1+ compatible — no #Requires -Version 7.0
 
 <#
 .SYNOPSIS
-Opens a Playwright browser session via the CLI.
+Opens a Playwright browser session via the CLI using Chrome by default.
 
 .DESCRIPTION
 Launches a browser using playwright-cli with configurable options for
 URL navigation, headed mode, named sessions, persistent profiles,
-browser type, and viewport size.
+browser type, and viewport size. Defaults to Chrome.
 
 .PARAMETER Url
 URL to navigate to after opening the browser.
 
 .PARAMETER Headed
-Open the browser in headed (visible) mode. Must be set at browser
-launch time — cannot be changed for subsequent commands.
+Open the browser in headed (visible) mode.
 
 .PARAMETER Session
-Named session for browser isolation. Commands scoped to this session
-use -s=<name> internally.
+Named session for browser isolation.
 
 .PARAMETER Persistent
 Use a persistent browser profile that survives browser restarts.
 
-.PARAMETER Profile
+.PARAMETER ProfilePath
 Path to a specific browser profile directory.
 
 .PARAMETER BrowserType
-Browser channel/engine to use: chrome, msedge, firefox, or webkit.
-The value `chromium` is accepted as an alias and maps to `chrome` for
-compatibility with older skill examples.
-Defaults to chrome.
+Browser channel/engine to use. Defaults to chrome.
+Valid: chrome, msedge, chromium, firefox, webkit.
 
 .PARAMETER ViewportSize
 Viewport dimensions as WIDTHxHEIGHT string. Defaults to 1280x720.
@@ -46,8 +40,8 @@ Opens a visible Chrome browser and navigates to the URL.
 Opens a named session for isolated testing.
 
 .EXAMPLE
-./Start-Browser.ps1 -BrowserType firefox -ViewportSize "1400x1100"
-Opens Firefox with a larger viewport.
+./Start-Browser.ps1 -BrowserType chrome -ViewportSize "1400x1100"
+Opens Chrome with a larger viewport.
 #>
 
 [CmdletBinding()]
@@ -68,7 +62,7 @@ param(
     [string]$ProfilePath,
 
     [Parameter()]
-    [ValidateSet('chrome', 'chromium', 'firefox', 'webkit', 'msedge')]
+    [ValidateSet('chrome', 'msedge', 'chromium', 'firefox', 'webkit')]
     [string]$BrowserType = 'chrome',
 
     [Parameter()]
@@ -81,12 +75,6 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'shared.psm1') -Force
 
 function Open-PlaywrightBrowser {
-    <#
-.SYNOPSIS
-Opens a browser session with the specified options.
-.OUTPUTS
-System.String
-#>
     [OutputType([string])]
     param(
         [string]$Url,
@@ -98,12 +86,7 @@ System.String
         [string]$ViewportSize
     )
 
-    $resolvedBrowser = switch ($BrowserType) {
-        'chromium' { 'chrome' }
-        default { $BrowserType }
-    }
-
-    $cliArgs = @('open', "--browser=$resolvedBrowser")
+    $cliArgs = @('open', "--browser=$BrowserType")
 
     if ($Url) {
         $cliArgs += $Url
@@ -134,67 +117,77 @@ System.String
     return $output
 }
 
+function Get-BrowserFallbackOrder {
+    [OutputType([string[]])]
+    param(
+        [string]$PrimaryBrowser
+    )
+
+    $preferredOrder = @('chrome', 'msedge', 'chromium', 'firefox', 'webkit')
+    $ordered = @($PrimaryBrowser)
+
+    foreach ($candidate in $preferredOrder) {
+        if ($candidate -ne $PrimaryBrowser) {
+            $ordered += $candidate
+        }
+    }
+
+    return $ordered
+}
+
 #region Main Execution
 if ($MyInvocation.InvocationName -ne '.') {
     try {
-        Write-SkillOutput -Title 'Browser' -Message "Opening $BrowserType browser..."
+        $attemptOrder = Get-BrowserFallbackOrder -PrimaryBrowser $BrowserType
+        $installAttempted = $false
+        $lastError = $null
 
-        $result = Open-PlaywrightBrowser `
-            -Url $Url `
-            -Headed:$Headed `
-            -Session $Session `
-            -Persistent:$Persistent `
-            -ProfilePath $ProfilePath `
-            -BrowserType $BrowserType `
-            -ViewportSize $ViewportSize
-
-        if ($result) {
-            Write-Host $result
-        }
-
-        Write-SkillOutput -Title 'Browser' -Message "Browser session opened."
-        if ($Session) {
-            Write-Host "Session: $Session"
-        }
-
-        exit 0
-    }
-    catch {
-        $errorText = $_.Exception.Message
-
-        # First-run environments may need playwright-cli workspace initialization
-        # so the CLI can discover installed browser channels like Chrome/Edge.
-        if ($errorText -match 'not installed|browser .* is not installed') {
-            Write-Warning "Browser channel not ready. Running playwright-cli install and retrying once..."
-            $null = Invoke-PlaywrightCli -Arguments @('install') -Session $Session
-
+        foreach ($candidateBrowser in $attemptOrder) {
             try {
-                $retryResult = Open-PlaywrightBrowser `
+                Write-SkillOutput -Title 'Browser' -Message "Opening $candidateBrowser browser..."
+
+                $result = Open-PlaywrightBrowser `
                     -Url $Url `
                     -Headed:$Headed `
                     -Session $Session `
                     -Persistent:$Persistent `
                     -ProfilePath $ProfilePath `
-                    -BrowserType $BrowserType `
+                    -BrowserType $candidateBrowser `
                     -ViewportSize $ViewportSize
 
-                if ($retryResult) {
-                    Write-Host $retryResult
+                if ($result) {
+                    Write-Host $result
                 }
 
-                Write-SkillOutput -Title 'Browser' -Message 'Browser session opened after initialization.'
+                Write-SkillOutput -Title 'Browser' -Message "Browser session opened using $candidateBrowser."
                 if ($Session) {
                     Write-Host "Session: $Session"
                 }
+
                 exit 0
             }
             catch {
-                Write-Error -ErrorAction Continue "Start-Browser retry failed: $($_.Exception.Message)"
-                exit 1
+                $lastError = $_.Exception.Message
+                Write-Warning "Failed to open ${candidateBrowser}: $lastError"
+
+                if (-not $installAttempted -and $lastError -match 'not installed|browser .* is not installed') {
+                    Write-Warning 'Browser channel may not be initialized. Running playwright-cli install once...'
+                    try {
+                        $null = Invoke-PlaywrightCli -Arguments @('install')
+                    }
+                    catch {
+                        Write-Warning "Workspace init failed: $($_.Exception.Message). Continuing fallback attempts..."
+                    }
+                    $installAttempted = $true
+                }
             }
         }
 
-        Write-Error -ErrorAction Continue "Start-Browser failed: $errorText"
+        Write-Error -ErrorAction Continue "Start-Browser failed after trying browsers in order: $($attemptOrder -join ', '). Last error: $lastError"
+        exit 1
+    }
+    catch {
+        Write-Error -ErrorAction Continue "Start-Browser failed: $($_.Exception.Message)"
         exit 1
     }
 }

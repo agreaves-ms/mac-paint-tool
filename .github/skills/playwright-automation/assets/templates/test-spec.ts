@@ -24,9 +24,9 @@ test.describe('Feature Name', () => {
   });
 
   test('should fill a form', async ({ page }) => {
-    // Fill form fields
-    await page.getByLabel('Email').fill('user@example.com');
-    await page.getByLabel('Password').fill('password123');
+    // Fill form fields — NEVER hardcode credentials; always read from environment variables
+    await page.getByLabel('Email').fill(process.env.APP_EMAIL || '');
+    await page.getByLabel('Password').fill(process.env.APP_PASSWORD || '');
 
     // Submit
     await page.getByRole('button', { name: 'Submit' }).click();
