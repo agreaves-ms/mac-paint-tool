@@ -49,6 +49,12 @@ The **GitHub MCP Server** enables Copilot agents to interact with GitHub directl
 
 No extensions are required for the GitHub MCP server — it's configured at the project level.
 
+Once the repository is set up, running `npm run dev` launches the standalone Vite dev server. Here's the Mac Paint Tool interface you'll be working with:
+
+![Mac Paint Tool — App Overview](docs/images/contributing-app-overview.png)
+
+The layout includes a **toolbar** on the left with 15 drawing tools, a **canvas** in the center, and a **property panel** on the right with color picker, brush presets, sliders, layers, and symmetry controls.
+
 ### 4. Install and Use GitHub Backlog Manager
 
 **GitHub Backlog Manager** is part of the [HVE Core - GitHub Backlog Management](https://marketplace.visualstudio.com/items?itemName=ise-hve-essentials.hve-github) VS Code extension. It provides AI-powered agents and prompts for triaging, discovering, and managing GitHub issues.
@@ -104,6 +110,10 @@ This keeps your `main` branch clean and makes it straightforward to create a pul
 ### 5. Working on Your Assigned Issue with HVE Core
 
 HVE Core offers several approaches for AI-assisted development. Choose the workflow that fits the complexity of your task.
+
+As you develop, you'll interact with the canvas using the various drawing tools. Here's an example of the Marker brush preset in action with multiple colors:
+
+![Mac Paint Tool — Drawing Tools in Action](docs/images/contributing-drawing-tools.png)
 
 #### 5.1 Step-by-Step Workflow (Recommended for Complex Features)
 
@@ -178,6 +188,10 @@ For features that are clearly scoped and well-defined, you can run the entire Re
 RPI will autonomously research the codebase, create a plan, implement the changes, and review the results. For larger features or tasks with many unknowns, the step-by-step process in 5.1 may produce better results. For straightforward tasks, this is the fastest path.
 
 #### 5.4 Create a Pull Request
+
+Here's an example of a completed scene using multiple tools — gradients, shapes, brush strokes, and direct canvas drawing:
+
+![Mac Paint Tool — Completed Drawing](docs/images/contributing-drawing-complete.png)
 
 Once you're satisfied with the implementation and the review passes, create a pull request back to the upstream repository:
 
